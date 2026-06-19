@@ -88,13 +88,38 @@ export default function CourseDetail() {
   const load = () => api.get(`/courses/${id}`).then(r => setData(r.data));
   useEffect(() => { load(); }, [id]);
 
-  // Reset timer whenever a new lesson is opened
-  useEffect(() => {
+  // Reset timer whenever a new lesson is opened; flush elapsed time on close/switch
+  const elapsedRef = React.useRef(0);
+  const activeLessonIdRef = React.useRef(null);
+  React.useEffect(() => { elapsedRef.current = elapsed; }, [elapsed]);
+  React.useEffect(() => {
+    // Flush previous lesson's time before switching
+    const prevId = activeLessonIdRef.current;
+    const prevElapsed = elapsedRef.current;
+    if (prevId && prevElapsed >= 5) {
+      api.post("/learner/lesson-time", { lesson_id: prevId, seconds: prevElapsed }).catch(()=>{});
+    }
+    activeLessonIdRef.current = active?.id || null;
     setElapsed(0); setAutoCompleted(false);
     if (!active) return;
     const t = setInterval(() => setElapsed(s => s + 1), 1000);
     return () => clearInterval(t);
   }, [active?.id]);
+
+  // Flush on tab close / route unmount
+  React.useEffect(() => {
+    const flush = () => {
+      const lid = activeLessonIdRef.current; const sec = elapsedRef.current;
+      if (lid && sec >= 5) {
+        navigator.sendBeacon?.(
+          `${process.env.REACT_APP_BACKEND_URL}/api/learner/lesson-time`,
+          new Blob([JSON.stringify({lesson_id: lid, seconds: sec})], {type: 'application/json'})
+        );
+      }
+    };
+    window.addEventListener("beforeunload", flush);
+    return () => { window.removeEventListener("beforeunload", flush); flush(); };
+  }, []);
 
   // Auto-complete time-based lessons (PPT/DOC/PDF/notes) once the learner has spent the expected duration
   useEffect(() => {

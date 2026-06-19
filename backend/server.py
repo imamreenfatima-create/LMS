@@ -227,6 +227,10 @@ class AssignCoursesIn(BaseModel):
 class ProgressIn(BaseModel):
     lesson_id: str
 
+class LessonTimeIn(BaseModel):
+    lesson_id: str
+    seconds: int
+
 class AiChatIn(BaseModel):
     message: str
     session_id: Optional[str] = None
@@ -581,6 +585,59 @@ async def get_course_structure(course_id: str, user=Depends(require_role("admin"
     return {"course": course, "modules": modules}
 
 # ---------- Progress ----------
+@api_router.post("/learner/lesson-time")
+async def log_lesson_time(payload: LessonTimeIn, user=Depends(current_user)):
+    if payload.seconds <= 0 or payload.seconds > 14400:  # ignore weird values (>4h)
+        return {"ok": True, "skipped": True}
+    lesson = await db.lessons.find_one({"id": payload.lesson_id}, {"_id": 0})
+    if not lesson:
+        raise HTTPException(404, "Lesson not found")
+    module = await db.modules.find_one({"id": lesson["module_id"]}, {"_id": 0})
+    await db.lesson_engagement.insert_one({
+        "id": new_id(), "user_id": user["id"], "user_name": user.get("full_name", ""),
+        "lesson_id": payload.lesson_id, "lesson_title": lesson["title"],
+        "module_id": lesson["module_id"], "course_id": module["course_id"] if module else None,
+        "content_type": lesson.get("content_type", ""), "seconds": payload.seconds,
+        "ts": now_iso(),
+    })
+    return {"ok": True}
+
+@api_router.get("/admin/analytics/lessons")
+async def lesson_engagement_analytics(course_id: Optional[str] = None,
+                                     user=Depends(require_role("admin", "trainer"))):
+    match: Dict[str, Any] = {}
+    if course_id:
+        match["course_id"] = course_id
+    pipe: List[Dict[str, Any]] = []
+    if match:
+        pipe.append({"$match": match})
+    pipe += [
+        {"$group": {
+            "_id": "$lesson_id",
+            "lesson_title": {"$first": "$lesson_title"},
+            "course_id": {"$first": "$course_id"},
+            "content_type": {"$first": "$content_type"},
+            "total_seconds": {"$sum": "$seconds"},
+            "sessions": {"$sum": 1},
+            "unique_users": {"$addToSet": "$user_id"},
+        }},
+        {"$sort": {"total_seconds": -1}},
+        {"$limit": 50},
+    ]
+    rows = await db.lesson_engagement.aggregate(pipe).to_list(50)
+    course_titles: Dict[str, str] = {}
+    for r in rows:
+        cid = r.get("course_id")
+        if cid and cid not in course_titles:
+            c = await db.courses.find_one({"id": cid}, {"_id": 0, "title": 1})
+            if c: course_titles[cid] = c["title"]
+        r["course_title"] = course_titles.get(cid, "—")
+        r["lesson_id"] = r.pop("_id")
+        r["unique_users"] = len(r["unique_users"])
+        r["avg_seconds"] = round(r["total_seconds"] / r["sessions"], 1) if r["sessions"] else 0
+        r["total_minutes"] = round(r["total_seconds"] / 60, 1)
+    return {"lessons": rows}
+
 @api_router.post("/learner/progress")
 async def mark_lesson_complete(payload: ProgressIn, user=Depends(current_user)):
     lesson = await db.lessons.find_one({"id": payload.lesson_id}, {"_id": 0})

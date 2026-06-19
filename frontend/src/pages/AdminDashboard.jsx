@@ -7,7 +7,11 @@ const COLORS = ["#E11D48", "#0B1121", "#F59E0B", "#10B981", "#6366F1", "#64748B"
 
 export default function AdminDashboard() {
   const [data, setData] = useState(null);
-  useEffect(() => { api.get("/admin/analytics").then(r => setData(r.data)); }, []);
+  const [lessons, setLessons] = useState([]);
+  useEffect(() => {
+    api.get("/admin/analytics").then(r => setData(r.data));
+    api.get("/admin/analytics/lessons").then(r => setLessons(r.data.lessons || []));
+  }, []);
   if (!data) return <div className="text-slate-500">Loading…</div>;
   const { kpis, top_performers, engagement, departments } = data;
   const kpiCards = [
@@ -75,6 +79,44 @@ export default function AdminDashboard() {
             </div>
           ))}
         </div>
+      </div>
+
+      <div className="hg-card p-6" data-testid="lesson-engagement-panel">
+        <div className="flex items-baseline justify-between mb-4">
+          <h2 className="font-heading text-lg font-semibold">Lesson engagement — total time spent</h2>
+          <span className="text-[10px] font-mono uppercase tracking-widest text-slate-500">Top 10</span>
+        </div>
+        {lessons.length === 0 ? (
+          <div className="text-sm text-slate-500 py-6 text-center">No engagement data yet — learners need to open lessons.</div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-[10px] font-mono uppercase tracking-widest text-slate-500 border-b border-slate-200">
+                <th className="py-2">Lesson</th><th className="py-2">Course</th><th className="py-2">Type</th>
+                <th className="py-2 text-right">Total time</th><th className="py-2 text-right">Sessions</th>
+                <th className="py-2 text-right">Learners</th><th className="py-2 text-right">Avg</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {lessons.slice(0,10).map(l => {
+                const mm = String(Math.floor(l.total_seconds/60)).padStart(2,'0');
+                const ss = String(l.total_seconds%60).padStart(2,'0');
+                const avgMin = (l.avg_seconds/60).toFixed(1);
+                return (
+                  <tr key={l.lesson_id} data-testid={`lesson-eng-${l.lesson_id}`}>
+                    <td className="py-2 pr-3 font-medium">{l.lesson_title}</td>
+                    <td className="py-2 pr-3 text-slate-500 text-xs">{l.course_title}</td>
+                    <td className="py-2 pr-3"><span className="px-2 py-0.5 text-[10px] font-mono uppercase bg-slate-100 rounded">{l.content_type}</span></td>
+                    <td className="py-2 text-right font-mono">{mm}:{ss}</td>
+                    <td className="py-2 text-right font-mono">{l.sessions}</td>
+                    <td className="py-2 text-right font-mono">{l.unique_users}</td>
+                    <td className="py-2 text-right font-mono">{avgMin}m</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
