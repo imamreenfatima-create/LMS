@@ -2,7 +2,66 @@ import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { toast } from "sonner";
-import { CheckCircle2, Play, FileText, Youtube, Link as LinkIcon, BookOpen, ClipboardCheck, FileQuestion, Sparkles, X } from "lucide-react";
+import { CheckCircle2, Play, FileText, Youtube, Link as LinkIcon, BookOpen, ClipboardCheck, FileQuestion, Sparkles, X, Download } from "lucide-react";
+
+function absoluteUrl(url) {
+  if (!url) return "";
+  if (url.startsWith("http")) return url;
+  return `${process.env.REACT_APP_BACKEND_URL}${url}`;
+}
+
+function LessonViewer({ lesson }) {
+  const ct = lesson.content_type;
+  const url = absoluteUrl(lesson.content_url);
+
+  // YouTube/video URL → embed player
+  if ((ct === "youtube" || ct === "video") && youtubeId(lesson.content_url)) {
+    return (
+      <div className="aspect-video bg-black rounded overflow-hidden">
+        <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${youtubeId(lesson.content_url)}`} allowFullScreen title={lesson.title} />
+      </div>
+    );
+  }
+  // Native MP4 / video file
+  if (ct === "video" && url) {
+    return (
+      <div className="aspect-video bg-black rounded overflow-hidden">
+        <video className="w-full h-full" src={url} controls />
+      </div>
+    );
+  }
+  // PDF — render in iframe (browsers display PDFs natively)
+  if (ct === "pdf" && url) {
+    return (
+      <div className="bg-slate-100 rounded overflow-hidden" style={{height: "75vh"}}>
+        <iframe className="w-full h-full" src={url} title={lesson.title} />
+      </div>
+    );
+  }
+  // PPT / DOC / DOCX / XLSX — use Microsoft Office Online viewer
+  if (["ppt","doc"].includes(ct) && url) {
+    const viewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
+    return (
+      <div className="bg-slate-100 rounded overflow-hidden" style={{height: "75vh"}}>
+        <iframe className="w-full h-full" src={viewerUrl} title={lesson.title} allowFullScreen />
+        <div className="text-[11px] text-slate-500 mt-2 text-center">Powered by Office Online · If preview doesn't load, use Download.</div>
+      </div>
+    );
+  }
+  // Notes / text content
+  if (ct === "notes" || lesson.text_content) {
+    return <div className="prose prose-slate max-w-none whitespace-pre-wrap text-sm leading-relaxed">{lesson.text_content || "No notes available."}</div>;
+  }
+  // External link fallback
+  if (url) {
+    return (
+      <div className="bg-slate-100 rounded overflow-hidden" style={{height: "75vh"}}>
+        <iframe className="w-full h-full" src={url} title={lesson.title} />
+      </div>
+    );
+  }
+  return <div className="text-slate-500 text-sm">No content available.</div>;
+}
 
 function getIcon(ct) {
   if (ct === "video" || ct === "youtube") return Youtube;
@@ -73,17 +132,20 @@ export default function CourseDetail() {
                 <div className="text-[10px] font-mono uppercase text-slate-500 tracking-widest">Now playing</div>
                 <div className="font-heading text-xl font-semibold mt-1">{active.title}</div>
               </div>
-              <button onClick={()=>setActive(null)} className="text-slate-400 hover:text-slate-700"><X className="w-5 h-5" /></button>
-            </div>
-            {(active.content_type === "youtube" || active.content_type === "video") && youtubeId(active.content_url) ? (
-              <div className="aspect-video bg-black rounded">
-                <iframe className="w-full h-full" src={`https://www.youtube.com/embed/${youtubeId(active.content_url)}`} allowFullScreen title={active.title} />
+              <div className="flex items-center gap-2">
+                {active.content_url && !["notes"].includes(active.content_type) && (
+                  <a href={active.content_url.startsWith("http") ? active.content_url : `${process.env.REACT_APP_BACKEND_URL}${active.content_url}`}
+                     download
+                     target="_blank" rel="noreferrer"
+                     data-testid="download-lesson-btn"
+                     className="px-3 py-1.5 border border-slate-300 rounded-sm text-xs flex items-center gap-1.5 hover:bg-slate-50">
+                    <Download className="w-3.5 h-3.5" /> Download
+                  </a>
+                )}
+                <button data-testid="close-lesson-btn" onClick={()=>setActive(null)} className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded"><X className="w-5 h-5" /></button>
               </div>
-            ) : active.content_type === "notes" || active.text_content ? (
-              <div className="prose prose-slate max-w-none whitespace-pre-wrap text-sm leading-relaxed">{active.text_content || "No notes available."}</div>
-            ) : active.content_url ? (
-              <a href={active.content_url} target="_blank" rel="noreferrer" className="text-[#E11D48] underline text-sm">Open content →</a>
-            ) : <div className="text-slate-500 text-sm">No content available.</div>}
+            </div>
+            <LessonViewer lesson={active} />
             <div className="mt-4 flex gap-2">
               {!completedSet.has(active.id) && (
                 <button data-testid="mark-complete-btn" onClick={()=>markComplete(active)} className="hg-btn-primary text-sm">Mark as complete</button>
