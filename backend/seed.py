@@ -54,14 +54,14 @@ async def run_seed(db):
         ("AD1002", "Priya Sharma", "priya@hireginie.com", "trainer", "Talent Acquisition", "Senior Trainer"),
     ]
     learners = [
-        ("CD1001", "Rohan Iyer", "rohan@hireginie.com", "Technical Recruitment", "Tech Recruiter"),
-        ("CD1002", "Sneha Kapoor", "sneha@hireginie.com", "BFSI Recruitment", "BFSI Specialist"),
-        ("CD1003", "Aditya Verma", "aditya@hireginie.com", "Talent Acquisition", "TA Lead"),
-        ("CD1004", "Meera Nair", "meera@hireginie.com", "Volume Hiring", "Volume Recruiter"),
-        ("CD1005", "Kabir Singh", "kabir@hireginie.com", "Technical Recruitment", "Tech Recruiter"),
-        ("CD1006", "Ananya Gupta", "ananya@hireginie.com", "Operations", "Recruitment Coordinator"),
-        ("CD1007", "Vikram Joshi", "vikram@hireginie.com", "HR Business Partners", "HRBP"),
-        ("CD1008", "Riya Bhat", "riya@hireginie.com", "BFSI Recruitment", "Junior Recruiter"),
+        ("1001", "Rohan Iyer", "rohan@hireginie.com", "Technical Recruitment", "Tech Recruiter"),
+        ("1002", "Sneha Kapoor", "sneha@hireginie.com", "BFSI Recruitment", "BFSI Specialist"),
+        ("1003", "Aditya Verma", "aditya@hireginie.com", "Talent Acquisition", "TA Lead"),
+        ("1004", "Meera Nair", "meera@hireginie.com", "Volume Hiring", "Volume Recruiter"),
+        ("1005", "Kabir Singh", "kabir@hireginie.com", "Technical Recruitment", "Tech Recruiter"),
+        ("1006", "Ananya Gupta", "ananya@hireginie.com", "Operations", "Recruitment Coordinator"),
+        ("1007", "Vikram Joshi", "vikram@hireginie.com", "HR Business Partners", "HRBP"),
+        ("1008", "Riya Bhat", "riya@hireginie.com", "BFSI Recruitment", "Junior Recruiter"),
     ]
     user_ids = {}
     for login_id, name, email, role, dept, desig in admins:
@@ -167,15 +167,15 @@ async def run_seed(db):
     # Assign 4 random courses to each learner
     import random
     random.seed(42)
-    learner_ids = [uid for lid, uid in user_ids.items() if lid.startswith("CD")]
+    learner_ids = [uid for lid, uid in user_ids.items() if lid.isdigit()]
     for uid in learner_ids:
         picks = random.sample(all_course_ids, 4)
         await db.users.update_one({"id": uid}, {"$set": {"assigned_courses": picks}})
 
     # Give some seed points so leaderboard has data
-    pts = [(user_ids["CD1001"], 320), (user_ids["CD1002"], 280), (user_ids["CD1003"], 245),
-           (user_ids["CD1004"], 210), (user_ids["CD1005"], 180), (user_ids["CD1006"], 150),
-           (user_ids["CD1007"], 120), (user_ids["CD1008"], 90)]
+    pts = [(user_ids["1001"], 320), (user_ids["1002"], 280), (user_ids["1003"], 245),
+           (user_ids["1004"], 210), (user_ids["1005"], 180), (user_ids["1006"], 150),
+           (user_ids["1007"], 120), (user_ids["1008"], 90)]
     for uid, p in pts:
         await db.users.update_one({"id": uid}, {"$set": {"points": p}})
         await db.point_events.insert_one({"id": new_id(), "user_id": uid, "points": p,

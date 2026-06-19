@@ -9,7 +9,7 @@ export default function FirstLogin() {
   const { user, refresh } = useAuth();
   const nav = useNavigate();
   const [form, setForm] = useState({
-    full_name: "",
+    full_name: user?.full_name || "",
     email: user?.email || "",
     mobile: user?.mobile || "",
     department: user?.department || "",

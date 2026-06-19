@@ -74,7 +74,7 @@ export default function Login() {
           <div className="mb-8">
             <div className="text-xs font-mono uppercase tracking-[0.2em] text-slate-500 mb-3">Sign in</div>
             <h2 className="font-heading text-3xl font-bold text-slate-900">Access your learning hub</h2>
-            <p className="text-slate-500 mt-2 text-sm">Use your Admin ID (AD1001–AD1500) or Employee Code (CD1001–CD1500).</p>
+            <p className="text-slate-500 mt-2 text-sm">Use your Admin ID (AD1001–AD1500) or Employee Code (1001–1500).</p>
           </div>
           <form onSubmit={submit} className="space-y-5">
             <div>
@@ -84,7 +84,7 @@ export default function Login() {
                 autoFocus
                 value={loginId}
                 onChange={(e) => setLoginId(e.target.value)}
-                placeholder="e.g. AD1001 or CD1001"
+                placeholder="e.g. AD1001 or 1001"
                 className="w-full px-4 py-3 border border-slate-300 rounded-md font-mono text-base focus:outline-none focus:ring-2 focus:ring-[#E11D48] focus:border-transparent"
                 required
               />
@@ -114,7 +114,7 @@ export default function Login() {
               <div className="flex items-center gap-2 text-slate-600"><Sparkles className="w-3.5 h-3.5 text-[#E11D48]" /> Demo accounts</div>
               <div className="font-mono space-y-1">
                 <div><span className="text-slate-900 font-semibold">AD1001</span> · Welcome@123 (Super Admin)</div>
-                <div><span className="text-slate-900 font-semibold">CD1001</span> · Welcome@123 (Learner)</div>
+                <div><span className="text-slate-900 font-semibold">1001</span> · Welcome@123 (Learner)</div>
               </div>
             </div>
           </form>

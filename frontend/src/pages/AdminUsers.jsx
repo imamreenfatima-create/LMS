@@ -6,7 +6,7 @@ import { UserPlus, Upload, KeyRound, X } from "lucide-react";
 export default function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ email:"", role:"learner", department:"", designation:"", mobile:"" });
+  const [form, setForm] = useState({ full_name:"", email:"", role:"learner", department:"", designation:"", mobile:"" });
   const [filter, setFilter] = useState("all");
 
   const load = () => api.get("/admin/users").then(r => setUsers(r.data));
@@ -17,7 +17,7 @@ export default function AdminUsers() {
     try {
       const { data } = await api.post("/admin/users", form);
       toast.success(`Created ${data.user.login_id} · default password: ${data.default_password}`);
-      setOpen(false); setForm({ email:"", role:"learner", department:"", designation:"", mobile:"" });
+      setOpen(false); setForm({ full_name:"", email:"", role:"learner", department:"", designation:"", mobile:"" });
       load();
     } catch (err) { toast.error(err?.response?.data?.detail || "Failed"); }
   };
@@ -101,6 +101,7 @@ export default function AdminUsers() {
               <button type="button" onClick={()=>setOpen(false)}><X className="w-5 h-5" /></button>
             </div>
             <div className="space-y-3">
+              <input data-testid="new-user-name" value={form.full_name} onChange={(e)=>setForm({...form, full_name:e.target.value})} placeholder="Full name (optional — employee can set on first login)" className="w-full px-3 py-2 border border-slate-300 rounded" />
               <input data-testid="new-user-email" type="email" value={form.email} onChange={(e)=>setForm({...form, email:e.target.value})} placeholder="Email (optional)" className="w-full px-3 py-2 border border-slate-300 rounded" />
               <select data-testid="new-user-role" value={form.role} onChange={(e)=>setForm({...form, role:e.target.value})} className="w-full px-3 py-2 border border-slate-300 rounded">
                 <option value="learner">Learner</option>
@@ -111,8 +112,8 @@ export default function AdminUsers() {
               <input value={form.designation} onChange={(e)=>setForm({...form, designation:e.target.value})} placeholder="Designation (optional)" className="w-full px-3 py-2 border border-slate-300 rounded" />
               <input value={form.mobile} onChange={(e)=>setForm({...form, mobile:e.target.value})} placeholder="Mobile (optional)" className="w-full px-3 py-2 border border-slate-300 rounded" />
               <div className="text-xs text-slate-500 bg-slate-50 p-3 rounded border border-slate-200">
-                Only an account is created here. The employee will enter their full name and complete profile details on first login.<br/>
-                Login ID is auto-generated (AD1001–AD1500 for admin/trainer, CD1001–CD1500 for learner). Default password: <span className="font-mono">Welcome@123</span>
+                All fields are optional — the employee can complete their profile on first login.<br/>
+                Login ID is auto-generated (AD1001–AD1500 for admin/trainer, 1001–1500 for learner). Default password: <span className="font-mono">Welcome@123</span>
               </div>
             </div>
             <button data-testid="create-user-submit" type="submit" className="hg-btn-primary w-full mt-4">Create user</button>
