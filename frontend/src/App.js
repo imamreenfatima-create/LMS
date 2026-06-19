@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from "./lib/auth";
 import { Toaster } from "sonner";
 
 import Login from "./pages/Login";
+import Register from "./pages/Register";
 import FirstLogin from "./pages/FirstLogin";
 import AppShell from "./pages/AppShell";
 import LearnerDashboard from "./pages/LearnerDashboard";
@@ -44,6 +45,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Root />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
           <Route path="/first-login" element={<FirstLogin />} />
 
           <Route element={<Protected roles={["learner","admin","trainer"]} />}>

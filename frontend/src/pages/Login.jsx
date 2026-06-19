@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useAuth } from "../lib/auth";
-import { useNavigate, Navigate } from "react-router-dom";
+import { useNavigate, Navigate, Link } from "react-router-dom";
 import { LOGO_URL } from "../lib/api";
 import { toast, Toaster } from "sonner";
 import { Loader2, ShieldCheck, Sparkles } from "lucide-react";
@@ -111,6 +111,9 @@ export default function Login() {
               Sign in securely
             </button>
             <div className="border-t border-slate-200 pt-5 text-xs text-slate-500 space-y-2">
+              <div className="flex items-center justify-between">
+                <div>New here? <Link to="/register" className="text-[#E11D48] underline font-medium" data-testid="goto-register">Create an account</Link></div>
+              </div>
               <div className="flex items-center gap-2 text-slate-600"><Sparkles className="w-3.5 h-3.5 text-[#E11D48]" /> Demo accounts</div>
               <div className="font-mono space-y-1">
                 <div><span className="text-slate-900 font-semibold">AD1001</span> · Welcome@123 (Super Admin)</div>

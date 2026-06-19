@@ -262,6 +262,54 @@ async def next_employee_id() -> str:
     return str(n)
 
 # ---------- Auth ----------
+class RegisterIn(BaseModel):
+    full_name: str
+    employee_code: str  # admins use AD#### (4-digit), learners use 4-digit numeric
+    password: str
+    email: Optional[EmailStr] = None
+    department: Optional[str] = ""
+    designation: Optional[str] = ""
+
+@api_router.post("/auth/register")
+async def register(payload: RegisterIn):
+    code = payload.employee_code.strip().upper()
+    # Validation
+    import re
+    is_admin = bool(re.match(r"^AD\d{4}$", code))
+    is_learner = bool(re.match(r"^\d{4}$", code))
+    if not (is_admin or is_learner):
+        raise HTTPException(400, "Employee code must be 4 digits (e.g. 1001) for learners or AD + 4 digits (e.g. AD1001) for admins")
+    if is_learner:
+        n = int(code)
+        if n < 1001 or n > 1500:
+            raise HTTPException(400, "Learner employee code must be between 1001 and 1500")
+    if is_admin:
+        n = int(code[2:])
+        if n < 1001 or n > 1500:
+            raise HTTPException(400, "Admin code must be between AD1001 and AD1500")
+    if not payload.full_name.strip():
+        raise HTTPException(400, "Full name is required")
+    if len(payload.password) < 8:
+        raise HTTPException(400, "Password must be at least 8 characters")
+    existing = await db.users.find_one({"login_id": code})
+    if existing:
+        raise HTTPException(400, f"Employee code {code} is already registered")
+    doc = {
+        "id": new_id(), "login_id": code, "full_name": payload.full_name.strip(),
+        "email": payload.email or "", "mobile": "",
+        "department": payload.department or "", "designation": payload.designation or "",
+        "joining_date": "", "reporting_manager": "",
+        "role": "admin" if is_admin else "learner",
+        "password_hash": hash_pw(payload.password),
+        "must_change_password": False, "policy_accepted": True,
+        "status": "active", "points": 0, "badges": [], "assigned_courses": [],
+        "created_at": now_iso(), "self_registered": True,
+    }
+    await db.users.insert_one(doc)
+    await log_activity(doc["id"], "self_registered")
+    doc.pop("password_hash", None); doc.pop("_id", None)
+    return {"user": doc}
+
 @api_router.post("/auth/login")
 async def login(payload: LoginIn):
     user = await db.users.find_one({"login_id": payload.login_id})
