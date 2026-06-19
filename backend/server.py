@@ -1,7 +1,7 @@
 """Hireginie LMS - FastAPI backend."""
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, UploadFile, File, Form, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -11,6 +11,12 @@ from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone, timedelta
 from emergentintegrations.llm.chat import LlmChat, UserMessage
+import qrcode
+from reportlab.lib.pagesizes import landscape, A4
+from reportlab.pdfgen import canvas
+from reportlab.lib.colors import HexColor
+from reportlab.lib.utils import ImageReader
+from io import BytesIO
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -160,6 +166,19 @@ class LessonIn(BaseModel):
     text_content: str = ""
     duration_min: float = 0
     order: int = 0
+
+class LessonUpdateIn(BaseModel):
+    title: Optional[str] = None
+    content_type: Optional[str] = None
+    content_url: Optional[str] = None
+    text_content: Optional[str] = None
+    duration_min: Optional[float] = None
+    order: Optional[int] = None
+
+class ModuleUpdateIn(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    order: Optional[int] = None
 
 class QuestionIn(BaseModel):
     text: str
@@ -461,6 +480,29 @@ async def del_lesson(lesson_id: str, user=Depends(require_role("admin", "trainer
     await db.lessons.delete_one({"id": lesson_id})
     return {"ok": True}
 
+@api_router.patch("/admin/lessons/{lesson_id}")
+async def update_lesson(lesson_id: str, payload: LessonUpdateIn, user=Depends(require_role("admin", "trainer"))):
+    updates = {k: v for k, v in payload.model_dump().items() if v is not None}
+    if updates:
+        await db.lessons.update_one({"id": lesson_id}, {"$set": updates})
+    return {"ok": True}
+
+@api_router.patch("/admin/modules/{module_id}")
+async def update_module(module_id: str, payload: ModuleUpdateIn, user=Depends(require_role("admin", "trainer"))):
+    updates = {k: v for k, v in payload.model_dump().items() if v is not None}
+    if updates:
+        await db.modules.update_one({"id": module_id}, {"$set": updates})
+    return {"ok": True}
+
+@api_router.get("/admin/courses/{course_id}/structure")
+async def get_course_structure(course_id: str, user=Depends(require_role("admin", "trainer"))):
+    course = await db.courses.find_one({"id": course_id}, {"_id": 0})
+    if not course: raise HTTPException(404, "Course not found")
+    modules = await db.modules.find({"course_id": course_id}, {"_id": 0}).sort("order", 1).to_list(200)
+    for m in modules:
+        m["lessons"] = await db.lessons.find({"module_id": m["id"]}, {"_id": 0}).sort("order", 1).to_list(200)
+    return {"course": course, "modules": modules}
+
 # ---------- Progress ----------
 @api_router.post("/learner/progress")
 async def mark_lesson_complete(payload: ProgressIn, user=Depends(current_user)):
@@ -605,6 +647,63 @@ async def my_submissions(user=Depends(current_user)):
 @api_router.get("/learner/certificates")
 async def my_certificates(user=Depends(current_user)):
     return await db.certificates.find({"user_id": user["id"]}, {"_id": 0}).sort("issued_at", -1).to_list(500)
+
+def render_certificate_pdf(cert: dict) -> bytes:
+    buf = BytesIO()
+    page = landscape(A4)
+    c = canvas.Canvas(buf, pagesize=page)
+    W, H = page
+    NAVY = HexColor("#0B1121"); RED = HexColor("#E11D48")
+    GREY = HexColor("#64748B"); DARK = HexColor("#0F172A")
+    c.setStrokeColor(NAVY); c.setLineWidth(2); c.rect(20, 20, W-40, H-40)
+    c.setStrokeColor(RED); c.setLineWidth(0.7); c.rect(35, 35, W-70, H-70)
+    c.setFillColor(NAVY); c.rect(35, H-100, W-70, 65, fill=1, stroke=0)
+    c.setFillColor(HexColor("#FFFFFF"))
+    c.setFont("Helvetica-Bold", 22); c.drawString(60, H-72, "Hireginie")
+    c.setFillColor(RED); c.drawString(60 + c.stringWidth("Hireginie","Helvetica-Bold",22), H-72, ".")
+    c.setFillColor(HexColor("#94A3B8"))
+    c.setFont("Helvetica", 8); c.drawString(60, H-88, "ENTERPRISE LMS - RECRUITMENT TRAINING")
+    c.setFillColor(GREY); c.setFont("Helvetica", 10)
+    c.drawCentredString(W/2, H-150, "CERTIFICATE OF COMPLETION")
+    c.setFillColor(DARK); c.setFont("Helvetica-Bold", 18)
+    c.drawCentredString(W/2, H-200, "This certifies that")
+    c.setFillColor(RED); c.setFont("Helvetica-Bold", 30)
+    c.drawCentredString(W/2, H-250, cert["user_name"])
+    c.setStrokeColor(HexColor("#E2E8F0")); c.setLineWidth(0.5)
+    c.line(W/2-180, H-260, W/2+180, H-260)
+    c.setFillColor(DARK); c.setFont("Helvetica", 13)
+    c.drawCentredString(W/2, H-290, "has successfully completed the course")
+    c.setFont("Helvetica-Bold", 18); c.setFillColor(NAVY)
+    c.drawCentredString(W/2, H-322, cert["course_title"])
+    c.setFillColor(GREY); c.setFont("Helvetica", 8)
+    c.drawString(70, 95, "CERTIFICATE NO."); c.drawString(70, 65, "DATE OF ISSUE")
+    c.setFillColor(DARK); c.setFont("Helvetica-Bold", 10)
+    c.drawString(70, 80, cert["certificate_no"])
+    c.drawString(70, 50, cert["issued_at"][:10])
+    qr = qrcode.make(f"https://hireginie.lms/verify/{cert['verify_code']}")
+    qb = BytesIO(); qr.save(qb, format="PNG"); qb.seek(0)
+    c.drawImage(ImageReader(qb), W-160, 50, 90, 90)
+    c.setFillColor(GREY); c.setFont("Helvetica", 7)
+    c.drawCentredString(W-115, 40, f"Verify: {cert['verify_code']}")
+    c.setStrokeColor(DARK); c.setLineWidth(0.5); c.line(W/2-90, 80, W/2+90, 80)
+    c.setFillColor(DARK); c.setFont("Helvetica-Bold", 10)
+    c.drawCentredString(W/2, 65, "Chief Learning Officer")
+    c.setFillColor(GREY); c.setFont("Helvetica", 8)
+    c.drawCentredString(W/2, 50, "Hireginie Learning Authority")
+    c.showPage(); c.save()
+    return buf.getvalue()
+
+@api_router.get("/learner/certificates/{cert_id}/pdf")
+async def download_certificate_pdf(cert_id: str, user=Depends(current_user)):
+    cert = await db.certificates.find_one({"id": cert_id}, {"_id": 0})
+    if not cert: raise HTTPException(404, "Certificate not found")
+    if cert["user_id"] != user["id"] and user["role"] not in ("admin", "trainer"):
+        raise HTTPException(403, "Not allowed")
+    pdf = render_certificate_pdf(cert)
+    return StreamingResponse(BytesIO(pdf), media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{cert["certificate_no"]}.pdf"'})
+
+
 
 @api_router.get("/certificates/verify/{verify_code}")
 async def verify_certificate(verify_code: str):

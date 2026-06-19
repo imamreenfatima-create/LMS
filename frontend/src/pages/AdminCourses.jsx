@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api, CATEGORIES } from "../lib/api";
 import { toast } from "sonner";
-import { Plus, X, Send, Sparkles } from "lucide-react";
+import { Plus, X, Send, Sparkles, Pencil } from "lucide-react";
 
 export default function AdminCourses() {
   const [courses, setCourses] = useState([]);
@@ -48,7 +48,10 @@ export default function AdminCourses() {
               <div className="text-xs text-slate-500 mt-1 line-clamp-2">{c.description}</div>
               <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-100">
                 <span className="text-xs font-mono text-slate-500">{c.module_count} modules</span>
-                <button data-testid={`assign-${c.id}`} onClick={()=>setAssignOpen(c)} className="text-xs text-[#E11D48] flex items-center gap-1"><Send className="w-3 h-3" /> Assign</button>
+                <div className="flex gap-2">
+                  <a href={`/admin/course/${c.id}/edit`} data-testid={`edit-${c.id}`} className="text-xs text-slate-600 flex items-center gap-1"><Pencil className="w-3 h-3" /> Manage</a>
+                  <button data-testid={`assign-${c.id}`} onClick={()=>setAssignOpen(c)} className="text-xs text-[#E11D48] flex items-center gap-1"><Send className="w-3 h-3" /> Assign</button>
+                </div>
               </div>
             </div>
           </div>

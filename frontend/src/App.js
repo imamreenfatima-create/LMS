@@ -19,6 +19,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import AdminUsers from "./pages/AdminUsers";
 import AdminCourses from "./pages/AdminCourses";
 import AdminSubmissions from "./pages/AdminSubmissions";
+import CourseEditor from "./pages/CourseEditor";
 
 function Protected({ roles }) {
   const { user, loading } = useAuth();
@@ -64,6 +65,7 @@ export default function App() {
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
               <Route path="/admin/users" element={<AdminUsers />} />
               <Route path="/admin/courses" element={<AdminCourses />} />
+              <Route path="/admin/course/:id/edit" element={<CourseEditor />} />
               <Route path="/admin/submissions" element={<AdminSubmissions />} />
               <Route path="/admin/leaderboard" element={<Leaderboard />} />
             </Route>
