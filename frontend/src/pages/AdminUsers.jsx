@@ -112,7 +112,7 @@ export default function AdminUsers() {
               <input value={form.mobile} onChange={(e)=>setForm({...form, mobile:e.target.value})} placeholder="Mobile (optional)" className="w-full px-3 py-2 border border-slate-300 rounded" />
               <div className="text-xs text-slate-500 bg-slate-50 p-3 rounded border border-slate-200">
                 Only an account is created here. The employee will enter their full name and complete profile details on first login.<br/>
-                Login ID is auto-generated (AD### for admin/trainer, 4-digit for learner). Default password: <span className="font-mono">Welcome@123</span>
+                Login ID is auto-generated (AD1001–AD1500 for admin/trainer, CD1001–CD1500 for learner). Default password: <span className="font-mono">Welcome@123</span>
               </div>
             </div>
             <button data-testid="create-user-submit" type="submit" className="hg-btn-primary w-full mt-4">Create user</button>

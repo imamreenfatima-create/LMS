@@ -241,23 +241,25 @@ class AiSummarizeIn(BaseModel):
 
 # ---------- ID generation ----------
 async def next_admin_id() -> str:
-    last = await db.users.find_one({"login_id": {"$regex": "^AD"}}, sort=[("login_id", -1)])
+    last = await db.users.find_one({"login_id": {"$regex": "^AD[0-9]{4}$"}}, sort=[("login_id", -1)])
     if not last:
-        return "AD001"
+        return "AD1001"
     n = int(last["login_id"][2:]) + 1
-    return f"AD{n:03d}"
+    if n > 1500:
+        raise HTTPException(400, "Admin range exhausted (AD1001-AD1500)")
+    return f"AD{n}"
 
 async def next_employee_id() -> str:
     cfg = await db.config.find_one({"key": "employee_range"}) or {"start": 1001, "end": 1500}
     last = await db.users.find_one(
-        {"login_id": {"$regex": "^[0-9]{4}$"}}, sort=[("login_id", -1)]
+        {"login_id": {"$regex": "^CD[0-9]{4}$"}}, sort=[("login_id", -1)]
     )
     if not last:
-        return str(cfg["start"])
-    n = int(last["login_id"]) + 1
+        return f"CD{cfg['start']}"
+    n = int(last["login_id"][2:]) + 1
     if n > cfg["end"]:
-        raise HTTPException(400, f"Employee range exhausted ({cfg['start']}-{cfg['end']}). Configure new range.")
-    return str(n)
+        raise HTTPException(400, f"Employee range exhausted (CD{cfg['start']}-CD{cfg['end']}). Configure new range.")
+    return f"CD{n}"
 
 # ---------- Auth ----------
 @api_router.post("/auth/login")

@@ -50,18 +50,18 @@ async def run_seed(db):
 
     # Users
     admins = [
-        ("AD001", "Aarav Mehta", "aarav@hireginie.com", "admin", "Operations", "Chief Learning Officer"),
-        ("AD002", "Priya Sharma", "priya@hireginie.com", "trainer", "Talent Acquisition", "Senior Trainer"),
+        ("AD1001", "Aarav Mehta", "aarav@hireginie.com", "admin", "Operations", "Chief Learning Officer"),
+        ("AD1002", "Priya Sharma", "priya@hireginie.com", "trainer", "Talent Acquisition", "Senior Trainer"),
     ]
     learners = [
-        ("1001", "Rohan Iyer", "rohan@hireginie.com", "Technical Recruitment", "Tech Recruiter"),
-        ("1002", "Sneha Kapoor", "sneha@hireginie.com", "BFSI Recruitment", "BFSI Specialist"),
-        ("1003", "Aditya Verma", "aditya@hireginie.com", "Talent Acquisition", "TA Lead"),
-        ("1004", "Meera Nair", "meera@hireginie.com", "Volume Hiring", "Volume Recruiter"),
-        ("1005", "Kabir Singh", "kabir@hireginie.com", "Technical Recruitment", "Tech Recruiter"),
-        ("1006", "Ananya Gupta", "ananya@hireginie.com", "Operations", "Recruitment Coordinator"),
-        ("1007", "Vikram Joshi", "vikram@hireginie.com", "HR Business Partners", "HRBP"),
-        ("1008", "Riya Bhat", "riya@hireginie.com", "BFSI Recruitment", "Junior Recruiter"),
+        ("CD1001", "Rohan Iyer", "rohan@hireginie.com", "Technical Recruitment", "Tech Recruiter"),
+        ("CD1002", "Sneha Kapoor", "sneha@hireginie.com", "BFSI Recruitment", "BFSI Specialist"),
+        ("CD1003", "Aditya Verma", "aditya@hireginie.com", "Talent Acquisition", "TA Lead"),
+        ("CD1004", "Meera Nair", "meera@hireginie.com", "Volume Hiring", "Volume Recruiter"),
+        ("CD1005", "Kabir Singh", "kabir@hireginie.com", "Technical Recruitment", "Tech Recruiter"),
+        ("CD1006", "Ananya Gupta", "ananya@hireginie.com", "Operations", "Recruitment Coordinator"),
+        ("CD1007", "Vikram Joshi", "vikram@hireginie.com", "HR Business Partners", "HRBP"),
+        ("CD1008", "Riya Bhat", "riya@hireginie.com", "BFSI Recruitment", "Junior Recruiter"),
     ]
     user_ids = {}
     for login_id, name, email, role, dept, desig in admins:
@@ -81,7 +81,7 @@ async def run_seed(db):
         await db.users.insert_one({
             "id": uid, "login_id": login_id, "full_name": name, "email": email,
             "mobile": "", "department": dept, "designation": desig, "joining_date": "2024-06-01",
-            "reporting_manager": "AD001", "role": "learner",
+            "reporting_manager": "AD1001", "role": "learner",
             "password_hash": hash_pw("Welcome@123"), "must_change_password": False,
             "policy_accepted": True, "status": "active", "points": 0, "badges": [],
             "assigned_courses": [], "created_at": now_iso(),
@@ -110,7 +110,7 @@ async def run_seed(db):
                 "sub_category": "", "thumbnail": thumbs[ti % len(thumbs)],
                 "duration_hours": 3 + (ti % 5), "level": levels[ti % 3],
                 "skills": [cat.lower(), title.split()[0].lower()], "is_published": True,
-                "created_by": user_ids["AD002"], "created_at": now_iso(),
+                "created_by": user_ids["AD1002"], "created_at": now_iso(),
             })
             ti += 1
             # 2 modules each
@@ -161,21 +161,21 @@ async def run_seed(db):
                 "description": f"Apply {title} concepts to a real scenario.",
                 "instructions": "Submit a short writeup (~300 words) or upload a document with your answer.",
                 "due_date": (datetime.now(timezone.utc) + timedelta(days=14)).isoformat(),
-                "max_marks": 100, "created_by": user_ids["AD002"], "created_at": now_iso(),
+                "max_marks": 100, "created_by": user_ids["AD1002"], "created_at": now_iso(),
             })
 
     # Assign 4 random courses to each learner
     import random
     random.seed(42)
-    learner_ids = [uid for lid, uid in user_ids.items() if lid.startswith("1")]
+    learner_ids = [uid for lid, uid in user_ids.items() if lid.startswith("CD")]
     for uid in learner_ids:
         picks = random.sample(all_course_ids, 4)
         await db.users.update_one({"id": uid}, {"$set": {"assigned_courses": picks}})
 
     # Give some seed points so leaderboard has data
-    pts = [(user_ids["1001"], 320), (user_ids["1002"], 280), (user_ids["1003"], 245),
-           (user_ids["1004"], 210), (user_ids["1005"], 180), (user_ids["1006"], 150),
-           (user_ids["1007"], 120), (user_ids["1008"], 90)]
+    pts = [(user_ids["CD1001"], 320), (user_ids["CD1002"], 280), (user_ids["CD1003"], 245),
+           (user_ids["CD1004"], 210), (user_ids["CD1005"], 180), (user_ids["CD1006"], 150),
+           (user_ids["CD1007"], 120), (user_ids["CD1008"], 90)]
     for uid, p in pts:
         await db.users.update_one({"id": uid}, {"$set": {"points": p}})
         await db.point_events.insert_one({"id": new_id(), "user_id": uid, "points": p,
