@@ -1,0 +1,79 @@
+{
+  "theme": "LIGHT",
+  "archetype": "4 (Swiss & High-Contrast)",
+  "design_philosophy": "A calm, product-first enterprise LMS dashboard that uses progressive disclosure and role-based surfacing. The structural UI is built on Dark Navy and White to convey trust, while Crimson Red acts as a high-signal action color, tying into the brand logo. Typography blends editorial authority (Cabinet Grotesk) with technical clarity (IBM Plex).",
+  "colors": {
+    "background_app": "#F8FAFC",
+    "background_surface": "#FFFFFF",
+    "background_sidebar": "#0B1121",
+    "primary_brand": "#E11D48",
+    "primary_brand_hover": "#BE123C",
+    "text_main": "#0F172A",
+    "text_muted": "#64748B",
+    "border_light": "#E2E8F0",
+    "border_dark": "#334155",
+    "success": "#10B981",
+    "warning": "#F59E0B",
+    "danger": "#EF4444",
+    "sidebar_text": "#F8FAFC",
+    "sidebar_text_muted": "#94A3B8",
+    "sidebar_active_bg": "#1E293B"
+  },
+  "typography": {
+    "heading_font": "Cabinet Grotesk",
+    "body_font": "IBM Plex Sans",
+    "mono_font": "IBM Plex Mono",
+    "h1": "text-4xl sm:text-5xl tracking-tight font-bold",
+    "h2": "text-2xl sm:text-3xl tracking-tight font-semibold",
+    "h3": "text-xl sm:text-2xl tracking-tight font-medium",
+    "body": "text-base leading-relaxed",
+    "small": "text-sm text-slate-500",
+    "overline": "text-xs font-semibold tracking-widest uppercase text-slate-500"
+  },
+  "layout_and_spacing": {
+    "dashboard_grid": "grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6",
+    "card_padding": "p-6",
+    "section_spacing": "py-12",
+    "radius_default": "rounded-md",
+    "radius_button": "rounded-sm"
+  },
+  "components": {
+    "card": "bg-white border border-slate-200 rounded-md shadow-sm",
+    "button_primary": "bg-[#E11D48] hover:bg-[#BE123C] text-white font-medium px-4 py-2 rounded-sm transition-colors",
+    "button_secondary": "bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 font-medium px-4 py-2 rounded-sm transition-colors",
+    "sidebar": "bg-[#0B1121] text-white border-r border-[#334155]",
+    "topbar": "bg-white border-b border-slate-200 h-16 flex items-center px-6",
+    "badge_course": "bg-slate-100 text-slate-700 px-2 py-1 text-xs font-medium rounded",
+    "progress_bar": "h-2 bg-slate-100 rounded-full overflow-hidden",
+    "progress_fill": "h-full bg-[#E11D48]"
+  },
+  "media": {
+    "logo_url": "https://customer-assets.emergentagent.com/job_9ac1aa54-9b53-4535-860a-351528709aec/artifacts/ve82pcgn_logo.png",
+    "images": {
+      "course_placeholder": "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1Nzh8MHwxfHNlYXJjaHwxfHxjb3Jwb3JhdGUlMjB0cmFpbmluZ3xlbnwwfHx8fDE3ODE4NDQ2ODd8MA&ixlib=rb-4.1.0&q=85",
+      "learning_banner": "https://images.pexels.com/photos/8761327/pexels-photo-8761327.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "reading_material": "https://images.pexels.com/photos/36766769/pexels-photo-36766769.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+      "gamification_badge_gold": "https://images.unsplash.com/photo-1578269174936-2709b6aeb913?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzV8MHwxfHNlYXJjaHwxfHxhY2hpZXZlbWVudCUyMHRyb3BoeXxlbnwwfHx8fDE3ODE4NDQ2ODd8MA&ixlib=rb-4.1.0&q=85"
+    }
+  },
+  "animation_and_interaction": {
+    "hover_state": "hover:-translate-y-0.5 transition-transform duration-200",
+    "focus_state": "focus:outline-none focus:ring-2 focus:ring-[#E11D48] focus:ring-offset-2",
+    "page_transition": "animate-in fade-in slide-in-from-bottom-4 duration-500"
+  },
+  "accessibility": {
+    "contrast_strategy": "Ensure 4.5:1 ratio on text. Primary red (#E11D48) on white passes AA.",
+    "testing_attributes": "All interactive elements MUST have data-testid attributes (e.g., data-testid='course-card-resume')"
+  },
+  "instructions_to_main_agent": [
+    "Strictly adhere to the Light theme with the dark navy sidebar and crimson red accents. Do not introduce purple, teal, or neon gradients.",
+    "Use Cabinet Grotesk for headings and IBM Plex Sans for body text. Load these via Google Fonts.",
+    "Build the dashboard using a CSS Grid strategy. The main content should have a calm, spacious layout (p-6 or p-8 inside cards).",
+    "Implement the 'Control Room' grid for the Admin Dashboard: top metrics in 1-col widgets, charts in 2-col/3-col widgets.",
+    "Use @phosphor-icons/react for a clean, professional, enterprise feel.",
+    "Ensure the sidebar supports role-based navigation (Super Admin, Trainer, Learner).",
+    "Use real text and the provided images from media keys. No placeholder images like via.placeholder.com.",
+    "Make sure all components are highly accessible, supporting keyboard navigation and screen readers.",
+    "Implement login handling differentiating AD001+ patterns for Admins vs 1001-1500 patterns for learners."
+  ]
+}
