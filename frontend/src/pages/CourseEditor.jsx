@@ -73,6 +73,7 @@ export default function CourseEditor() {
               ))}
               {m.lessons.length === 0 && <div className="p-4 text-center text-sm text-slate-500">No lessons yet.</div>}
             </div>
+            <DropZone moduleId={m.id} onUploaded={load} />
           </div>
         ))}
       </div>
@@ -84,6 +85,46 @@ export default function CourseEditor() {
 
       {addingLessonFor && <LessonModal moduleId={addingLessonFor} onClose={()=>setAddingLessonFor(null)} onSaved={()=>{ setAddingLessonFor(null); load(); }} />}
       {editingLesson && <LessonModal lesson={editingLesson} onClose={()=>setEditingLesson(null)} onSaved={()=>{ setEditingLesson(null); load(); }} />}
+    </div>
+  );
+}
+
+function DropZone({ moduleId, onUploaded }) {
+  const [drag, setDrag] = React.useState(false);
+  const [busy, setBusy] = React.useState(false);
+
+  const upload = async (files) => {
+    if (!files || files.length === 0) return;
+    setBusy(true);
+    try {
+      const fd = new FormData();
+      Array.from(files).forEach(f => fd.append("files", f));
+      const { data } = await api.post("/upload/multi", fd, { headers: {"Content-Type":"multipart/form-data"} });
+      const lessons = data.files.map(f => ({
+        title: f.filename, content_type: f.content_type,
+        content_url: f.url, duration_min: 10,
+      }));
+      await api.post(`/admin/modules/${moduleId}/bulk-lessons`, { lessons });
+      toast.success(`Added ${lessons.length} lesson(s)`);
+      onUploaded();
+    } catch { toast.error("Upload failed"); } finally { setBusy(false); }
+  };
+
+  return (
+    <div
+      data-testid={`dropzone-${moduleId}`}
+      onDragOver={(e)=>{e.preventDefault(); setDrag(true);}}
+      onDragLeave={()=>setDrag(false)}
+      onDrop={(e)=>{e.preventDefault(); setDrag(false); upload(e.dataTransfer.files);}}
+      className={`m-3 border-2 border-dashed rounded p-4 text-center text-xs transition ${drag ? "border-[#E11D48] bg-rose-50" : "border-slate-300 text-slate-500"}`}
+    >
+      {busy ? "Uploading…" : (<>
+        Drop files here (PDF, PPT, DOCX, MP4) to auto-create lessons —
+        <label className="text-[#E11D48] underline cursor-pointer ml-1">
+          or browse
+          <input data-testid={`dropzone-input-${moduleId}`} type="file" multiple className="hidden" onChange={(e)=>upload(e.target.files)} />
+        </label>
+      </>)}
     </div>
   );
 }

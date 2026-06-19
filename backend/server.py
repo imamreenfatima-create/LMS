@@ -484,7 +484,34 @@ async def del_lesson(lesson_id: str, user=Depends(require_role("admin", "trainer
 async def update_lesson(lesson_id: str, payload: LessonUpdateIn, user=Depends(require_role("admin", "trainer"))):
     updates = {k: v for k, v in payload.model_dump().items() if v is not None}
     if updates:
+        # Snapshot prior version
+        prior = await db.lessons.find_one({"id": lesson_id}, {"_id": 0})
+        if prior:
+            content_keys = {"title","content_type","content_url","text_content","duration_min"}
+            if any(k in updates for k in content_keys):
+                version_count = await db.lesson_versions.count_documents({"lesson_id": lesson_id})
+                await db.lesson_versions.insert_one({
+                    "id": new_id(), "lesson_id": lesson_id,
+                    "version": version_count + 1,
+                    "snapshot": prior, "edited_by": user["id"],
+                    "edited_by_name": user.get("full_name", ""),
+                    "edited_at": now_iso(),
+                })
         await db.lessons.update_one({"id": lesson_id}, {"$set": updates})
+    return {"ok": True}
+
+@api_router.get("/admin/lessons/{lesson_id}/versions")
+async def lesson_versions(lesson_id: str, user=Depends(require_role("admin","trainer"))):
+    versions = await db.lesson_versions.find({"lesson_id": lesson_id}, {"_id": 0}).sort("version", -1).to_list(50)
+    return versions
+
+@api_router.post("/admin/lessons/{lesson_id}/revert/{version}")
+async def revert_lesson(lesson_id: str, version: int, user=Depends(require_role("admin","trainer"))):
+    v = await db.lesson_versions.find_one({"lesson_id": lesson_id, "version": version}, {"_id": 0})
+    if not v: raise HTTPException(404, "Version not found")
+    snap = v["snapshot"]
+    snap.pop("id", None); snap.pop("created_at", None)
+    await db.lessons.update_one({"id": lesson_id}, {"$set": snap})
     return {"ok": True}
 
 @api_router.patch("/admin/modules/{module_id}")
@@ -769,6 +796,42 @@ async def upload_file(file: UploadFile = File(...), user=Depends(current_user)):
     with fpath.open("wb") as out:
         shutil.copyfileobj(file.file, out)
     return {"url": f"/api/files/{fname}", "filename": file.filename, "size": fpath.stat().st_size}
+
+@api_router.post("/upload/multi")
+async def upload_multi(files: List[UploadFile] = File(...), user=Depends(current_user)):
+    results = []
+    for file in files:
+        ext = Path(file.filename).suffix.lower()
+        fname = f"{new_id()}{ext}"
+        fpath = UPLOAD_DIR / fname
+        with fpath.open("wb") as out:
+            shutil.copyfileobj(file.file, out)
+        # Infer content type
+        ctype = "doc"
+        if ext in [".mp4",".mov",".webm",".avi"]: ctype = "video"
+        elif ext == ".pdf": ctype = "pdf"
+        elif ext in [".ppt",".pptx"]: ctype = "ppt"
+        elif ext in [".doc",".docx"]: ctype = "doc"
+        elif ext in [".png",".jpg",".jpeg",".webp"]: ctype = "link"
+        results.append({"url": f"/api/files/{fname}", "filename": file.filename,
+                         "size": fpath.stat().st_size, "content_type": ctype})
+    return {"files": results}
+
+@api_router.post("/admin/modules/{module_id}/bulk-lessons")
+async def bulk_create_lessons(module_id: str, payload: dict, user=Depends(require_role("admin","trainer"))):
+    """payload = {lessons: [{title, content_type, content_url, duration_min}]}"""
+    module = await db.modules.find_one({"id": module_id}, {"_id": 0})
+    if not module: raise HTTPException(404, "Module not found")
+    existing = await db.lessons.count_documents({"module_id": module_id})
+    created = []
+    for i, l in enumerate(payload.get("lessons", [])):
+        doc = {"id": new_id(), "module_id": module_id, "title": l.get("title","Untitled"),
+               "content_type": l.get("content_type","doc"), "content_url": l.get("content_url",""),
+               "text_content": "", "duration_min": l.get("duration_min", 10),
+               "order": existing + i, "created_at": now_iso()}
+        await db.lessons.insert_one(doc); doc.pop("_id", None)
+        created.append(doc)
+    return {"created": created}
 
 @api_router.get("/files/{fname}")
 async def serve_file(fname: str):
