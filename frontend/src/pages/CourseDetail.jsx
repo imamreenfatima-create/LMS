@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { toast } from "sonner";
-import { CheckCircle2, Play, FileText, Youtube, Link as LinkIcon, BookOpen, ClipboardCheck, FileQuestion, Sparkles, X, Download } from "lucide-react";
+import { CheckCircle2, Play, FileText, Youtube, Link as LinkIcon, BookOpen, ClipboardCheck, FileQuestion, Sparkles, X, Download, Clock } from "lucide-react";
 
 function absoluteUrl(url) {
   if (!url) return "";
@@ -82,9 +82,37 @@ export default function CourseDetail() {
   const [summaryOpen, setSummaryOpen] = useState(false);
   const [summary, setSummary] = useState("");
   const [summaryLoading, setSummaryLoading] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const [autoCompleted, setAutoCompleted] = useState(false);
 
   const load = () => api.get(`/courses/${id}`).then(r => setData(r.data));
   useEffect(() => { load(); }, [id]);
+
+  // Reset timer whenever a new lesson is opened
+  useEffect(() => {
+    setElapsed(0); setAutoCompleted(false);
+    if (!active) return;
+    const t = setInterval(() => setElapsed(s => s + 1), 1000);
+    return () => clearInterval(t);
+  }, [active?.id]);
+
+  // Auto-complete time-based lessons (PPT/DOC/PDF/notes) once the learner has spent the expected duration
+  useEffect(() => {
+    if (!active || autoCompleted || !data) return;
+    const isTimed = ["pdf","ppt","doc","notes"].includes(active.content_type);
+    if (!isTimed) return;
+    const done = new Set(data.completed_lessons || []);
+    if (done.has(active.id)) return;
+    const target = Math.max(30, Math.floor((active.duration_min || 5) * 60 * 0.8));
+    if (elapsed >= target) {
+      setAutoCompleted(true);
+      api.post("/learner/progress", { lesson_id: active.id }).then(() => {
+        toast.success("Auto-completed: you've reached the expected duration (+10 pts).");
+        load();
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [elapsed, active, data, autoCompleted]);
 
   if (!data) return <div className="text-slate-500">Loading…</div>;
   const { course, modules, quizzes, assignments, completed_lessons, progress_pct } = data;
@@ -95,6 +123,7 @@ export default function CourseDetail() {
     toast.success("Lesson completed (+10 pts)");
     load();
   };
+
 
   const summarize = async (lesson) => {
     setSummaryOpen(true); setSummary(""); setSummaryLoading(true);
@@ -146,6 +175,34 @@ export default function CourseDetail() {
               </div>
             </div>
             <LessonViewer lesson={active} />
+            {/* Time-tracking strip for presentation/document lessons */}
+            {["pdf","ppt","doc","notes"].includes(active.content_type) && !completedSet.has(active.id) && (() => {
+              const target = Math.max(30, Math.floor((active.duration_min || 5) * 60 * 0.8));
+              const pct = Math.min(100, Math.round((elapsed / target) * 100));
+              const mm = String(Math.floor(elapsed/60)).padStart(2,'0');
+              const ss = String(elapsed%60).padStart(2,'0');
+              return (
+                <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded" data-testid="lesson-timer">
+                  <div className="flex items-center justify-between text-xs mb-1.5">
+                    <div className="flex items-center gap-2 text-slate-600">
+                      <Clock className="w-3.5 h-3.5 text-[#E11D48]" />
+                      <span className="font-mono">{mm}:{ss}</span>
+                      <span className="text-slate-400">of ~{Math.floor(target/60)}:{String(target%60).padStart(2,'0')} expected</span>
+                    </div>
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-slate-500">{pct < 100 ? "Engaged" : "Ready to complete"}</span>
+                  </div>
+                  <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                    <div className="h-full bg-[#E11D48] transition-all duration-500" style={{width: `${pct}%`}} />
+                  </div>
+                  <div className="text-[11px] text-slate-500 mt-1.5">This lesson will be auto-completed once you reach the expected duration.</div>
+                </div>
+              );
+            })()}
+            {completedSet.has(active.id) && (
+              <div className="mt-4 p-2.5 bg-emerald-50 border border-emerald-200 rounded flex items-center gap-2 text-sm text-emerald-700" data-testid="lesson-done-badge">
+                <CheckCircle2 className="w-4 h-4" /> Completed
+              </div>
+            )}
             <div className="mt-4 flex gap-2">
               {!completedSet.has(active.id) && (
                 <button data-testid="mark-complete-btn" onClick={()=>markComplete(active)} className="hg-btn-primary text-sm">Mark as complete</button>
