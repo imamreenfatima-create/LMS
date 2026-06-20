@@ -3,70 +3,6 @@ from fastapi import FastAPI, APIRouter, HTTPException, Depends, UploadFile, File
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import FileResponse, StreamingResponse, Response
 import requests
-
-# ---------- Emergent object storage ----------
-STORAGE_URL = "https://integrations.emergentagent.com/objstore/api/v1/storage"
-APP_NAME = "hireginie-lms"
-_storage_key: Optional[str] = None
-
-def init_storage() -> Optional[str]:
-    global _storage_key
-    if _storage_key:
-        return _storage_key
-    try:
-        r = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_LLM_KEY}, timeout=30)
-        r.raise_for_status()
-        _storage_key = r.json()["storage_key"]
-        return _storage_key
-    except Exception as e:
-        logging.error(f"Storage init failed: {e}")
-        return None
-
-def storage_put(path: str, data: bytes, content_type: str) -> dict:
-    key = init_storage()
-    if not key:
-        raise HTTPException(500, "Object storage unavailable")
-    r = requests.put(f"{STORAGE_URL}/objects/{path}",
-                     headers={"X-Storage-Key": key, "Content-Type": content_type},
-                     data=data, timeout=180)
-    if r.status_code == 403:  # key may have expired — re-init once
-        globals()["_storage_key"] = None
-        key = init_storage()
-        r = requests.put(f"{STORAGE_URL}/objects/{path}",
-                         headers={"X-Storage-Key": key, "Content-Type": content_type},
-                         data=data, timeout=180)
-    r.raise_for_status()
-    return r.json()
-
-def storage_get(path: str) -> tuple[bytes, str]:
-    key = init_storage()
-    if not key:
-        raise HTTPException(500, "Object storage unavailable")
-    r = requests.get(f"{STORAGE_URL}/objects/{path}",
-                     headers={"X-Storage-Key": key}, timeout=120)
-    if r.status_code == 403:
-        globals()["_storage_key"] = None
-        key = init_storage()
-        r = requests.get(f"{STORAGE_URL}/objects/{path}",
-                         headers={"X-Storage-Key": key}, timeout=120)
-    if r.status_code == 404:
-        raise HTTPException(404, "File not found in storage")
-    r.raise_for_status()
-    return r.content, r.headers.get("Content-Type", "application/octet-stream")
-
-MIME_MAP = {
-    ".pdf": "application/pdf",
-    ".ppt": "application/vnd.ms-powerpoint",
-    ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-    ".doc": "application/msword",
-    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    ".xls": "application/vnd.ms-excel",
-    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    ".mp4": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime",
-    ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
-    ".webp": "image/webp", ".gif": "image/gif",
-    ".txt": "text/plain", ".csv": "text/csv",
-}
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -97,6 +33,70 @@ JWT_SECRET = os.environ['JWT_SECRET']
 JWT_ALGORITHM = os.environ['JWT_ALGORITHM']
 JWT_EXPIRE_MINUTES = int(os.environ['JWT_EXPIRE_MINUTES'])
 EMERGENT_LLM_KEY = os.environ['EMERGENT_LLM_KEY']
+
+# ---------- Emergent object storage ----------
+STORAGE_URL = "https://integrations.emergentagent.com/objstore/api/v1/storage"
+APP_NAME = "hireginie-lms"
+_storage_key = None
+
+def init_storage():
+    global _storage_key
+    if _storage_key:
+        return _storage_key
+    try:
+        r = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_LLM_KEY}, timeout=30)
+        r.raise_for_status()
+        _storage_key = r.json()["storage_key"]
+        return _storage_key
+    except Exception as e:
+        logging.error(f"Storage init failed: {e}")
+        return None
+
+def storage_put(path, data, content_type):
+    key = init_storage()
+    if not key:
+        raise HTTPException(500, "Object storage unavailable")
+    r = requests.put(f"{STORAGE_URL}/objects/{path}",
+                     headers={"X-Storage-Key": key, "Content-Type": content_type},
+                     data=data, timeout=180)
+    if r.status_code == 403:
+        globals()["_storage_key"] = None
+        key = init_storage()
+        r = requests.put(f"{STORAGE_URL}/objects/{path}",
+                         headers={"X-Storage-Key": key, "Content-Type": content_type},
+                         data=data, timeout=180)
+    r.raise_for_status()
+    return r.json()
+
+def storage_get(path):
+    key = init_storage()
+    if not key:
+        raise HTTPException(500, "Object storage unavailable")
+    r = requests.get(f"{STORAGE_URL}/objects/{path}",
+                     headers={"X-Storage-Key": key}, timeout=120)
+    if r.status_code == 403:
+        globals()["_storage_key"] = None
+        key = init_storage()
+        r = requests.get(f"{STORAGE_URL}/objects/{path}",
+                         headers={"X-Storage-Key": key}, timeout=120)
+    if r.status_code == 404:
+        raise HTTPException(404, "File not found in storage")
+    r.raise_for_status()
+    return r.content, r.headers.get("Content-Type", "application/octet-stream")
+
+MIME_MAP = {
+    ".pdf": "application/pdf",
+    ".ppt": "application/vnd.ms-powerpoint",
+    ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ".doc": "application/msword",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".xls": "application/vnd.ms-excel",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".mp4": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime",
+    ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+    ".webp": "image/webp", ".gif": "image/gif",
+    ".txt": "text/plain", ".csv": "text/csv",
+}
 
 app = FastAPI(title="Hireginie LMS")
 api_router = APIRouter(prefix="/api")
@@ -999,7 +999,7 @@ async def upload_multi(files: List[UploadFile] = File(...), user=Depends(current
                          "size": result.get("size", len(data)), "content_type": clt})
     return {"files": results}
 
-@api_router.get("/files/{path:path}")
+@api_router.api_route("/files/{path:path}", methods=["GET", "HEAD"])
 async def serve_file(path: str):
     """Public file fetch from Emergent object storage."""
     record = await db.files.find_one({"storage_path": path, "is_deleted": False})
