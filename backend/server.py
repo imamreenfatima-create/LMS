@@ -854,43 +854,93 @@ def render_certificate_pdf(cert: dict) -> bytes:
     W, H = page
     NAVY = HexColor("#0B1121"); RED = HexColor("#E11D48")
     GREY = HexColor("#64748B"); DARK = HexColor("#0F172A")
+
+    # Register signature font (once per process)
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    sig_font_name = "SignatureFont"
+    if sig_font_name not in pdfmetrics.getRegisteredFontNames():
+        try:
+            pdfmetrics.registerFont(TTFont(sig_font_name, str(ROOT_DIR / "assets" / "GreatVibes-Regular.ttf")))
+        except Exception:
+            sig_font_name = "Helvetica-Oblique"
+
+    # Outer borders
     c.setStrokeColor(NAVY); c.setLineWidth(2); c.rect(20, 20, W-40, H-40)
     c.setStrokeColor(RED); c.setLineWidth(0.7); c.rect(35, 35, W-70, H-70)
+
+    # Top navy bar with logo + brand
     c.setFillColor(NAVY); c.rect(35, H-100, W-70, 65, fill=1, stroke=0)
+    logo_path = ROOT_DIR / "assets" / "logo.png"
+    if logo_path.exists():
+        try:
+            c.drawImage(ImageReader(str(logo_path)), 55, H-95, 55, 55, mask='auto')
+        except Exception:
+            pass
     c.setFillColor(HexColor("#FFFFFF"))
-    c.setFont("Helvetica-Bold", 22); c.drawString(60, H-72, "Hireginie")
-    c.setFillColor(RED); c.drawString(60 + c.stringWidth("Hireginie","Helvetica-Bold",22), H-72, ".")
+    c.setFont("Helvetica-Bold", 22); c.drawString(125, H-72, "Hireginie")
+    c.setFillColor(RED); c.drawString(125 + c.stringWidth("Hireginie","Helvetica-Bold",22), H-72, ".")
     c.setFillColor(HexColor("#94A3B8"))
-    c.setFont("Helvetica", 8); c.drawString(60, H-88, "ENTERPRISE LMS - RECRUITMENT TRAINING")
+    c.setFont("Helvetica", 8); c.drawString(125, H-88, "ENTERPRISE LMS  ·  RECRUITMENT TRAINING")
+
+    # Headline
     c.setFillColor(GREY); c.setFont("Helvetica", 10)
     c.drawCentredString(W/2, H-150, "CERTIFICATE OF COMPLETION")
     c.setFillColor(DARK); c.setFont("Helvetica-Bold", 18)
     c.drawCentredString(W/2, H-200, "This certifies that")
+
+    # Recipient
     c.setFillColor(RED); c.setFont("Helvetica-Bold", 30)
     c.drawCentredString(W/2, H-250, cert["user_name"])
     c.setStrokeColor(HexColor("#E2E8F0")); c.setLineWidth(0.5)
     c.line(W/2-180, H-260, W/2+180, H-260)
+
+    # Body + course
     c.setFillColor(DARK); c.setFont("Helvetica", 13)
     c.drawCentredString(W/2, H-290, "has successfully completed the course")
     c.setFont("Helvetica-Bold", 18); c.setFillColor(NAVY)
     c.drawCentredString(W/2, H-322, cert["course_title"])
+
+    # Footer - cert no / date (left)
     c.setFillColor(GREY); c.setFont("Helvetica", 8)
     c.drawString(70, 95, "CERTIFICATE NO."); c.drawString(70, 65, "DATE OF ISSUE")
     c.setFillColor(DARK); c.setFont("Helvetica-Bold", 10)
     c.drawString(70, 80, cert["certificate_no"])
     c.drawString(70, 50, cert["issued_at"][:10])
+
+    # Signature block (center) — script font "Raziya"
+    c.setFillColor(DARK); c.setFont(sig_font_name, 28)
+    c.drawCentredString(W/2, 95, "Raziya")
+    c.setStrokeColor(DARK); c.setLineWidth(0.5)
+    c.line(W/2-90, 80, W/2+90, 80)
+    c.setFillColor(DARK); c.setFont("Helvetica-Bold", 10)
+    c.drawCentredString(W/2, 65, "Raziya · Chief Learning Officer")
+    c.setFillColor(GREY); c.setFont("Helvetica", 8)
+    c.drawCentredString(W/2, 50, "Hireginie Learning Authority")
+
+    # QR Code
     qr = qrcode.make(f"https://hireginie.lms/verify/{cert['verify_code']}")
     qb = BytesIO(); qr.save(qb, format="PNG"); qb.seek(0)
     c.drawImage(ImageReader(qb), W-160, 50, 90, 90)
     c.setFillColor(GREY); c.setFont("Helvetica", 7)
     c.drawCentredString(W-115, 40, f"Verify: {cert['verify_code']}")
-    c.setStrokeColor(DARK); c.setLineWidth(0.5); c.line(W/2-90, 80, W/2+90, 80)
-    c.setFillColor(DARK); c.setFont("Helvetica-Bold", 10)
-    c.drawCentredString(W/2, 65, "Chief Learning Officer")
-    c.setFillColor(GREY); c.setFont("Helvetica", 8)
-    c.drawCentredString(W/2, 50, "Hireginie Learning Authority")
+
     c.showPage(); c.save()
     return buf.getvalue()
+
+@api_router.get("/certificates/sample/pdf")
+async def sample_certificate_pdf():
+    """Public sample certificate — used for marketing the program to learners."""
+    sample = {
+        "user_name": "Your Name Here",
+        "course_title": "Boolean Search Mastery",
+        "certificate_no": "HG-SAMPLE-PREVIEW",
+        "issued_at": now_iso(),
+        "verify_code": "SAMPLEVERIFY",
+    }
+    pdf = render_certificate_pdf(sample)
+    return StreamingResponse(BytesIO(pdf), media_type="application/pdf",
+        headers={"Content-Disposition": 'inline; filename="hireginie-sample-certificate.pdf"'})
 
 @api_router.get("/learner/certificates/{cert_id}/pdf")
 async def download_certificate_pdf(cert_id: str, user=Depends(current_user)):
