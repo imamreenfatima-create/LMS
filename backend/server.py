@@ -254,6 +254,7 @@ class QuestionIn(BaseModel):
 
 class QuizIn(BaseModel):
     course_id: str
+    module_id: Optional[str] = None
     title: str
     description: str = ""
     duration_min: int = 10
@@ -725,7 +726,7 @@ async def maybe_issue_certificate(user_id: str, course_id: str):
     if total_lessons == 0: return
     done = await db.progress.count_documents({"user_id": user_id, "course_id": course_id})
     pct = (done / total_lessons) * 100
-    quizzes = await db.quizzes.find({"course_id": course_id}, {"_id": 0}).to_list(20)
+    quizzes = await db.quizzes.find({"course_id": course_id}, {"_id": 0}).to_list(50)
     quiz_passed = True
     for q in quizzes:
         a = await db.quiz_attempts.find_one({"user_id": user_id, "quiz_id": q["id"], "passed": True})

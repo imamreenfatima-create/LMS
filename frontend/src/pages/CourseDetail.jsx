@@ -99,7 +99,7 @@ function ResourceSection({ icon: Icon, label, lessons, completedSet, onOpen, acc
 }
 
 // ---------- Module accordion ----------
-function ModuleAccordion({ module, idx, defaultOpen, completedSet, courseQuizzes, onOpenLesson }) {
+function ModuleAccordion({ module, idx, defaultOpen, completedSet, moduleQuizzes, passedQuizIds, onOpenLesson }) {
   const [open, setOpen] = useState(defaultOpen);
   const buckets = useMemo(() => ({
     videos:  module.lessons.filter(l => l.content_type === "video"),
@@ -109,9 +109,14 @@ function ModuleAccordion({ module, idx, defaultOpen, completedSet, courseQuizzes
   }), [module.lessons]);
 
   const total = module.lessons.length;
-  const done = module.lessons.filter(l => completedSet.has(l.id)).length;
-  const moduleComplete = total > 0 && done === total;
-  const pct = total ? Math.round((done / total) * 100) : 0;
+  const doneLessons = module.lessons.filter(l => completedSet.has(l.id)).length;
+  const lessonsAllDone = total > 0 && doneLessons === total;
+  const quizzesAllPassed = moduleQuizzes.length === 0 || moduleQuizzes.every(q => passedQuizIds.has(q.id));
+  const moduleComplete = lessonsAllDone && quizzesAllPassed;
+  // Progress = lesson progress weighted with quiz pass
+  const denom = total + moduleQuizzes.length;
+  const num = doneLessons + moduleQuizzes.filter(q => passedQuizIds.has(q.id)).length;
+  const pct = denom ? Math.round((num / denom) * 100) : 0;
 
   return (
     <div className="hg-card overflow-hidden" data-testid={`module-${module.id}`}>
@@ -128,7 +133,7 @@ function ModuleAccordion({ module, idx, defaultOpen, completedSet, courseQuizzes
             <div className="flex-1 max-w-xs h-1.5 bg-slate-100 rounded-full overflow-hidden">
               <div className="h-full bg-[#E11D48] transition-all" style={{width: `${pct}%`}} />
             </div>
-            <span className="text-xs font-mono text-slate-500">{done}/{total}</span>
+            <span className="text-xs font-mono text-slate-500">{num}/{denom}</span>
           </div>
         </div>
         {moduleComplete && (
@@ -143,26 +148,29 @@ function ModuleAccordion({ module, idx, defaultOpen, completedSet, courseQuizzes
           <ResourceSection icon={FileText} label="Documents" lessons={buckets.docs} completedSet={completedSet} onOpen={onOpenLesson} accent="text-[#0B1121]" />
           <ResourceSection icon={Presentation} label="Presentations (PPT)" lessons={buckets.ppts} completedSet={completedSet} onOpen={onOpenLesson} accent="text-[#F59E0B]" />
           <ResourceSection icon={Youtube} label="YouTube Resources" lessons={buckets.youtube} completedSet={completedSet} onOpen={onOpenLesson} accent="text-[#FF0000]" />
-          {courseQuizzes.length > 0 && (
+          {moduleQuizzes.length > 0 && (
             <div className="border border-slate-200 rounded-lg bg-white">
               <div className="px-4 py-2.5 border-b border-slate-100 flex items-center gap-2 bg-slate-50/50">
                 <ClipboardCheck className="w-4 h-4 text-[#E11D48]" />
                 <div className="text-sm font-semibold">Assignment</div>
-                <div className="text-xs text-slate-500 ml-auto">Complete to mark module done</div>
+                <div className="text-xs text-slate-500 font-mono ml-auto">{moduleQuizzes.filter(q => passedQuizIds.has(q.id)).length} / {moduleQuizzes.length} passed</div>
               </div>
               <div className="p-3 space-y-2">
-                {courseQuizzes.map(q => (
-                  <Link key={q.id} to={`/app/quiz/${q.id}`} data-testid={`assignment-link-${q.id}`} className="block p-3 rounded hover:bg-slate-50 border border-transparent hover:border-slate-200">
-                    <div className="flex items-center gap-2">
-                      <FileQuestion className="w-4 h-4 text-[#E11D48]" />
-                      <div className="flex-1">
-                        <div className="text-sm font-medium">{q.title}</div>
-                        <div className="text-xs text-slate-500 font-mono mt-0.5">{q.questions?.length || 0} MCQs · {q.duration_min} min · pass {q.pass_percent}%</div>
+                {moduleQuizzes.map(q => {
+                  const passed = passedQuizIds.has(q.id);
+                  return (
+                    <Link key={q.id} to={`/app/quiz/${q.id}`} data-testid={`assignment-link-${q.id}`} className={`block p-3 rounded border ${passed ? "bg-emerald-50/40 border-emerald-200" : "border-transparent hover:bg-slate-50 hover:border-slate-200"}`}>
+                      <div className="flex items-center gap-2">
+                        {passed ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <FileQuestion className="w-4 h-4 text-[#E11D48]" />}
+                        <div className="flex-1">
+                          <div className="text-sm font-medium">{q.title}</div>
+                          <div className="text-xs text-slate-500 font-mono mt-0.5">{q.questions?.length || 0} MCQs · {q.duration_min} min · pass {q.pass_percent}%{passed ? " · ✓ Passed" : ""}</div>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-slate-400" />
                       </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400" />
-                    </div>
-                  </Link>
-                ))}
+                    </Link>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -207,8 +215,13 @@ export default function CourseDetail() {
   }, [elapsed, active, data, autoDone]);
 
   if (!data) return <div className="text-slate-500">Loading…</div>;
-  const { course, modules, quizzes, progress_pct, completed_lessons } = data;
+  const { course, modules, quizzes, progress_pct, completed_lessons, passed_quiz_ids } = data;
   const completedSet = new Set(completed_lessons);
+  const passedQuizIds = new Set(passed_quiz_ids || []);
+  const quizzesByModule = (modules || []).reduce((acc, m) => {
+    acc[m.id] = (quizzes || []).filter(q => q.module_id === m.id);
+    return acc;
+  }, {});
 
   const markComplete = async () => {
     if (!active) return;
@@ -281,7 +294,8 @@ export default function CourseDetail() {
             idx={i}
             defaultOpen={i === 0}
             completedSet={completedSet}
-            courseQuizzes={i === 0 ? quizzes : []}
+            moduleQuizzes={quizzesByModule[m.id] || []}
+            passedQuizIds={passedQuizIds}
             onOpenLesson={setActive}
           />
         ))}
