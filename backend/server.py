@@ -1,7 +1,72 @@
 """Hireginie LMS - FastAPI backend."""
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, UploadFile, File, Form, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse, Response
+import requests
+
+# ---------- Emergent object storage ----------
+STORAGE_URL = "https://integrations.emergentagent.com/objstore/api/v1/storage"
+APP_NAME = "hireginie-lms"
+_storage_key: Optional[str] = None
+
+def init_storage() -> Optional[str]:
+    global _storage_key
+    if _storage_key:
+        return _storage_key
+    try:
+        r = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_LLM_KEY}, timeout=30)
+        r.raise_for_status()
+        _storage_key = r.json()["storage_key"]
+        return _storage_key
+    except Exception as e:
+        logging.error(f"Storage init failed: {e}")
+        return None
+
+def storage_put(path: str, data: bytes, content_type: str) -> dict:
+    key = init_storage()
+    if not key:
+        raise HTTPException(500, "Object storage unavailable")
+    r = requests.put(f"{STORAGE_URL}/objects/{path}",
+                     headers={"X-Storage-Key": key, "Content-Type": content_type},
+                     data=data, timeout=180)
+    if r.status_code == 403:  # key may have expired — re-init once
+        globals()["_storage_key"] = None
+        key = init_storage()
+        r = requests.put(f"{STORAGE_URL}/objects/{path}",
+                         headers={"X-Storage-Key": key, "Content-Type": content_type},
+                         data=data, timeout=180)
+    r.raise_for_status()
+    return r.json()
+
+def storage_get(path: str) -> tuple[bytes, str]:
+    key = init_storage()
+    if not key:
+        raise HTTPException(500, "Object storage unavailable")
+    r = requests.get(f"{STORAGE_URL}/objects/{path}",
+                     headers={"X-Storage-Key": key}, timeout=120)
+    if r.status_code == 403:
+        globals()["_storage_key"] = None
+        key = init_storage()
+        r = requests.get(f"{STORAGE_URL}/objects/{path}",
+                         headers={"X-Storage-Key": key}, timeout=120)
+    if r.status_code == 404:
+        raise HTTPException(404, "File not found in storage")
+    r.raise_for_status()
+    return r.content, r.headers.get("Content-Type", "application/octet-stream")
+
+MIME_MAP = {
+    ".pdf": "application/pdf",
+    ".ppt": "application/vnd.ms-powerpoint",
+    ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ".doc": "application/msword",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".xls": "application/vnd.ms-excel",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ".mp4": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime",
+    ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+    ".webp": "image/webp", ".gif": "image/gif",
+    ".txt": "text/plain", ".csv": "text/csv",
+}
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -897,34 +962,56 @@ async def search(q: str, user=Depends(current_user)):
 # ---------- Upload ----------
 @api_router.post("/upload")
 async def upload_file(file: UploadFile = File(...), user=Depends(current_user)):
-    ext = Path(file.filename).suffix
-    fname = f"{new_id()}{ext}"
-    fpath = UPLOAD_DIR / fname
-    with fpath.open("wb") as out:
-        shutil.copyfileobj(file.file, out)
-    return {"url": f"/api/files/{fname}", "filename": file.filename, "size": fpath.stat().st_size}
+    ext = Path(file.filename).suffix.lower()
+    storage_path = f"{APP_NAME}/uploads/{user['id']}/{new_id()}{ext}"
+    data = await file.read()
+    ctype = MIME_MAP.get(ext, file.content_type or "application/octet-stream")
+    result = storage_put(storage_path, data, ctype)
+    await db.files.insert_one({
+        "id": new_id(), "storage_path": result["path"], "original_filename": file.filename,
+        "content_type": ctype, "size": result.get("size", len(data)),
+        "owner_id": user["id"], "is_deleted": False, "created_at": now_iso(),
+    })
+    return {"url": f"/api/files/{result['path']}", "filename": file.filename, "size": result.get("size", len(data))}
 
 @api_router.post("/upload/multi")
 async def upload_multi(files: List[UploadFile] = File(...), user=Depends(current_user)):
     results = []
     for file in files:
         ext = Path(file.filename).suffix.lower()
-        fname = f"{new_id()}{ext}"
-        fpath = UPLOAD_DIR / fname
-        with fpath.open("wb") as out:
-            shutil.copyfileobj(file.file, out)
-        # Infer content type
-        ctype = "doc"
-        if ext in [".mp4",".mov",".webm",".avi"]: ctype = "video"
-        elif ext == ".pdf": ctype = "pdf"
-        elif ext in [".ppt",".pptx"]: ctype = "ppt"
-        elif ext in [".doc",".docx"]: ctype = "doc"
-        elif ext in [".png",".jpg",".jpeg",".webp"]: ctype = "link"
-        results.append({"url": f"/api/files/{fname}", "filename": file.filename,
-                         "size": fpath.stat().st_size, "content_type": ctype})
+        storage_path = f"{APP_NAME}/uploads/{user['id']}/{new_id()}{ext}"
+        data = await file.read()
+        ctype = MIME_MAP.get(ext, file.content_type or "application/octet-stream")
+        result = storage_put(storage_path, data, ctype)
+        await db.files.insert_one({
+            "id": new_id(), "storage_path": result["path"], "original_filename": file.filename,
+            "content_type": ctype, "size": result.get("size", len(data)),
+            "owner_id": user["id"], "is_deleted": False, "created_at": now_iso(),
+        })
+        # Infer lesson content_type
+        clt = "doc"
+        if ext in [".mp4",".mov",".webm",".avi"]: clt = "video"
+        elif ext == ".pdf": clt = "pdf"
+        elif ext in [".ppt",".pptx"]: clt = "ppt"
+        elif ext in [".doc",".docx"]: clt = "doc"
+        elif ext in [".png",".jpg",".jpeg",".webp"]: clt = "link"
+        results.append({"url": f"/api/files/{result['path']}", "filename": file.filename,
+                         "size": result.get("size", len(data)), "content_type": clt})
     return {"files": results}
 
-@api_router.post("/admin/modules/{module_id}/bulk-lessons")
+@api_router.get("/files/{path:path}")
+async def serve_file(path: str):
+    """Public file fetch from Emergent object storage."""
+    record = await db.files.find_one({"storage_path": path, "is_deleted": False})
+    try:
+        data, ctype = storage_get(path)
+    except HTTPException as e:
+        raise e
+    final_ctype = (record or {}).get("content_type") or ctype
+    return Response(content=data, media_type=final_ctype, headers={
+        "Cache-Control": "public, max-age=3600",
+        "Content-Disposition": f'inline; filename="{(record or {}).get("original_filename","file")}"'
+    })
 async def bulk_create_lessons(module_id: str, payload: dict, user=Depends(require_role("admin","trainer"))):
     """payload = {lessons: [{title, content_type, content_url, duration_min}]}"""
     module = await db.modules.find_one({"id": module_id}, {"_id": 0})
@@ -939,12 +1026,6 @@ async def bulk_create_lessons(module_id: str, payload: dict, user=Depends(requir
         await db.lessons.insert_one(doc); doc.pop("_id", None)
         created.append(doc)
     return {"created": created}
-
-@api_router.get("/files/{fname}")
-async def serve_file(fname: str):
-    fpath = UPLOAD_DIR / fname
-    if not fpath.exists(): raise HTTPException(404, "Not found")
-    return FileResponse(fpath)
 
 # ---------- Dashboards / Analytics ----------
 @api_router.get("/learner/dashboard")
@@ -1100,6 +1181,14 @@ logger = logging.getLogger(__name__)
 
 @app.on_event("startup")
 async def startup():
+    # Initialise object storage
+    try:
+        if init_storage():
+            logger.info("Object storage initialized")
+        else:
+            logger.warning("Object storage init returned no key")
+    except Exception as e:
+        logger.error(f"Object storage init error: {e}")
     # Indexes
     await db.users.create_index("login_id", unique=True)
     await db.users.create_index("email")

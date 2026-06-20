@@ -13,6 +13,28 @@ function absoluteUrl(url) {
 function LessonViewer({ lesson }) {
   const ct = lesson.content_type;
   const url = absoluteUrl(lesson.content_url);
+  const [fileMissing, setFileMissing] = React.useState(false);
+
+  // HEAD-check uploaded files (not external links) so we can show a clear missing-file message
+  React.useEffect(() => {
+    setFileMissing(false);
+    if (!url) return;
+    const isInternal = lesson.content_url?.startsWith("/api/files/");
+    if (!isInternal) return;
+    fetch(url, { method: "HEAD" }).then(r => { if (!r.ok) setFileMissing(true); }).catch(() => setFileMissing(true));
+  }, [url, lesson.content_url]);
+
+  if (fileMissing) {
+    return (
+      <div className="bg-rose-50 border border-rose-200 rounded p-6 text-center">
+        <div className="font-heading font-semibold text-[#BE123C]">File not found</div>
+        <p className="text-sm text-slate-700 mt-2">
+          This lesson's file is not available on the current server. If this content was uploaded on the preview environment, it won't be present in production — and vice versa. Please ask your trainer to re-upload the file here.
+        </p>
+        <div className="font-mono text-[10px] text-slate-500 mt-3 break-all">{lesson.content_url}</div>
+      </div>
+    );
+  }
 
   // YouTube/video URL → embed player
   if ((ct === "youtube" || ct === "video") && youtubeId(lesson.content_url)) {
@@ -30,7 +52,7 @@ function LessonViewer({ lesson }) {
       </div>
     );
   }
-  // PDF — render in iframe (browsers display PDFs natively)
+  // PDF — render in iframe
   if (ct === "pdf" && url) {
     return (
       <div className="bg-slate-100 rounded overflow-hidden" style={{height: "75vh"}}>
@@ -38,13 +60,17 @@ function LessonViewer({ lesson }) {
       </div>
     );
   }
-  // PPT / DOC / DOCX / XLSX — use Microsoft Office Online viewer
+  // PPT / DOC / DOCX — use Microsoft Office Online viewer
   if (["ppt","doc"].includes(ct) && url) {
     const viewerUrl = `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(url)}`;
     return (
-      <div className="bg-slate-100 rounded overflow-hidden" style={{height: "75vh"}}>
-        <iframe className="w-full h-full" src={viewerUrl} title={lesson.title} allowFullScreen />
-        <div className="text-[11px] text-slate-500 mt-2 text-center">Powered by Office Online · If preview doesn't load, use Download.</div>
+      <div>
+        <div className="bg-slate-100 rounded overflow-hidden" style={{height: "75vh"}}>
+          <iframe className="w-full h-full" src={viewerUrl} title={lesson.title} allowFullScreen />
+        </div>
+        <div className="text-[11px] text-slate-500 mt-2 text-center">
+          Powered by Microsoft Office Online · If the preview is blank, click <a href={url} className="text-[#E11D48] underline" target="_blank" rel="noreferrer" download>Download</a> to open locally.
+        </div>
       </div>
     );
   }
