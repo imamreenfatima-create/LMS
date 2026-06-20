@@ -942,6 +942,30 @@ async def sample_certificate_pdf():
     return StreamingResponse(BytesIO(pdf), media_type="application/pdf",
         headers={"Content-Disposition": 'inline; filename="hireginie-sample-certificate.pdf"'})
 
+@api_router.get("/certificates/sample/image")
+async def sample_certificate_image():
+    """Public PNG preview of the sample certificate — used in inline image previews
+    where browsers block embedded PDFs."""
+    sample = {
+        "user_name": "Your Name Here",
+        "course_title": "Boolean Search Mastery",
+        "certificate_no": "HG-SAMPLE-PREVIEW",
+        "issued_at": now_iso(),
+        "verify_code": "SAMPLEVERIFY",
+    }
+    pdf_bytes = render_certificate_pdf(sample)
+    try:
+        from pdf2image import convert_from_bytes
+        images = convert_from_bytes(pdf_bytes, dpi=140, first_page=1, last_page=1)
+        out = BytesIO()
+        images[0].save(out, format="PNG", optimize=True)
+        out.seek(0)
+        return Response(content=out.getvalue(), media_type="image/png",
+                        headers={"Cache-Control": "public, max-age=86400"})
+    except Exception as e:
+        logger.error(f"Sample PNG render failed: {e}")
+        raise HTTPException(500, "Could not render sample preview")
+
 @api_router.get("/learner/certificates/{cert_id}/pdf")
 async def download_certificate_pdf(cert_id: str, user=Depends(current_user)):
     cert = await db.certificates.find_one({"id": cert_id}, {"_id": 0})

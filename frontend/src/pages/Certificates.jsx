@@ -6,7 +6,8 @@ export default function Certificates() {
   const [certs, setCerts] = useState([]);
   const [sampleOpen, setSampleOpen] = useState(false);
   useEffect(() => { api.get("/learner/certificates").then(r => setCerts(r.data)); }, []);
-  const sampleUrl = `${process.env.REACT_APP_BACKEND_URL}/api/certificates/sample/pdf`;
+  const sampleImg = `${process.env.REACT_APP_BACKEND_URL}/api/certificates/sample/image`;
+  const samplePdf = `${process.env.REACT_APP_BACKEND_URL}/api/certificates/sample/pdf`;
   return (
     <div className="space-y-6" data-testid="certificates-page">
       <div className="flex items-baseline justify-between">
@@ -104,16 +105,26 @@ export default function Certificates() {
       )}
 
       {sampleOpen && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={()=>setSampleOpen(false)} data-testid="sample-cert-modal">
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={()=>setSampleOpen(false)} data-testid="sample-cert-modal">
           <div className="bg-white rounded-lg max-w-5xl w-full max-h-[92vh] flex flex-col" onClick={(e)=>e.stopPropagation()}>
             <div className="p-4 border-b border-slate-200 flex items-center justify-between">
               <div>
                 <div className="font-heading text-xl font-bold">Sample certificate</div>
                 <div className="text-xs text-slate-500">Yours will look like this — with <em>your</em> name and the course you complete.</div>
               </div>
-              <button onClick={()=>setSampleOpen(false)} className="p-2 hover:bg-slate-100 rounded">✕</button>
+              <div className="flex items-center gap-2">
+                <a href={samplePdf} target="_blank" rel="noreferrer" data-testid="sample-pdf-download"
+                   className="px-3 py-1.5 border border-slate-300 rounded-sm text-xs flex items-center gap-1.5 hover:bg-slate-50">
+                  <Download className="w-3.5 h-3.5" /> Download PDF
+                </a>
+                <button onClick={()=>setSampleOpen(false)} className="p-2 hover:bg-slate-100 rounded">✕</button>
+              </div>
             </div>
-            <iframe src={sampleUrl} className="flex-1 w-full" title="Sample certificate" />
+            <div className="flex-1 overflow-auto p-6 bg-slate-100 flex items-center justify-center">
+              <img src={sampleImg} alt="Sample certificate preview"
+                   className="max-w-full h-auto rounded shadow-xl"
+                   data-testid="sample-cert-img" />
+            </div>
           </div>
         </div>
       )}
