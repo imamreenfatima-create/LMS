@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { LOGO_URL, api } from "../lib/api";
@@ -22,20 +22,20 @@ export default function AppShell() {
   const isAdmin = user?.role === "admin" || user?.role === "trainer";
   const isSuperAdmin = user?.role === "admin";
 
-  const learnerNav = [
+  const learnerNav = useMemo(() => [
     { to: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { to: "/app/library", label: "Course Library", icon: BookOpen },
     { to: "/app/certificates", label: "Certificates", icon: Award },
     { to: "/app/leaderboard", label: "Leaderboard", icon: Trophy },
     { to: "/app/assignments", label: "Assignments", icon: ClipboardList },
-  ];
-  const adminNav = [
+  ], []);
+  const adminNav = useMemo(() => [
     { to: "/admin/dashboard", label: "Analytics", icon: LayoutDashboard },
     { to: "/admin/users", label: "Users", icon: Users, super: true },
     { to: "/admin/courses", label: "Courses", icon: GraduationCap },
     { to: "/admin/submissions", label: "Submissions", icon: FileSpreadsheet },
     { to: "/admin/leaderboard", label: "Leaderboard", icon: Trophy },
-  ];
+  ].filter(n => !n.super || isSuperAdmin), [isSuperAdmin]);
 
   const onSearch = (e) => {
     e.preventDefault();
@@ -69,7 +69,7 @@ export default function AppShell() {
           {isAdmin && (
             <>
               <div className="px-4 mt-6 text-[10px] font-mono uppercase tracking-widest text-[#64748B] mb-2">Administration</div>
-              {adminNav.filter(n => !n.super || isSuperAdmin).map((n) => (
+              {adminNav.map((n) => (
                 <NavLink
                   data-testid={`nav-admin-${n.label.toLowerCase()}`}
                   key={n.to} to={n.to}

@@ -4,7 +4,7 @@ import { MessageSquareText, Send, X, Loader2, Sparkles } from "lucide-react";
 
 export default function AiChatbot() {
   const [open, setOpen] = useState(false);
-  const [msgs, setMsgs] = useState([{ from: "ai", text: "Hi! I'm Genie, your learning assistant. Ask me anything about recruitment, courses, or concepts." }]);
+  const [msgs, setMsgs] = useState([{ id: "intro", from: "ai", text: "Hi! I'm Genie, your learning assistant. Ask me anything about recruitment, courses, or concepts." }]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [sid, setSid] = useState(null);
@@ -12,13 +12,13 @@ export default function AiChatbot() {
   const send = async () => {
     if (!input.trim() || busy) return;
     const userMsg = input.trim();
-    setMsgs([...msgs, { from: "user", text: userMsg }]);
+    setMsgs([...msgs, { id: `u-${Date.now()}`, from: "user", text: userMsg }]);
     setInput(""); setBusy(true);
     try {
       const { data } = await api.post("/ai/chat", { message: userMsg, session_id: sid });
       setSid(data.session_id);
-      setMsgs(m => [...m, { from: "ai", text: data.answer }]);
-    } catch { setMsgs(m => [...m, { from: "ai", text: "Sorry, I couldn't reach the AI right now." }]); }
+      setMsgs(m => [...m, { id: `a-${Date.now()}`, from: "ai", text: data.answer }]);
+    } catch { setMsgs(m => [...m, { id: `e-${Date.now()}`, from: "ai", text: "Sorry, I couldn't reach the AI right now." }]); }
     finally { setBusy(false); }
   };
 
@@ -37,8 +37,8 @@ export default function AiChatbot() {
             </div>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
-            {msgs.map((m, i) => (
-              <div key={i} className={`flex ${m.from==='user' ? 'justify-end' : 'justify-start'}`}>
+            {msgs.map((m) => (
+              <div key={m.id} className={`flex ${m.from==='user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[80%] px-3 py-2 rounded-lg text-sm whitespace-pre-wrap ${m.from==='user' ? 'bg-[#0B1121] text-white' : 'bg-slate-100 text-slate-800'}`}>{m.text}</div>
               </div>
             ))}

@@ -1086,6 +1086,8 @@ async def serve_file(path: str):
         "Cache-Control": "public, max-age=3600",
         "Content-Disposition": f'inline; filename="{(record or {}).get("original_filename","file")}"'
     })
+
+@api_router.post("/admin/modules/{module_id}/bulk-lessons")
 async def bulk_create_lessons(module_id: str, payload: dict, user=Depends(require_role("admin","trainer"))):
     """payload = {lessons: [{title, content_type, content_url, duration_min}]}"""
     module = await db.modules.find_one({"id": module_id}, {"_id": 0})

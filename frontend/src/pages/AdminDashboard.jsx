@@ -66,10 +66,10 @@ export default function AdminDashboard() {
       <div className="hg-card p-6">
         <h2 className="font-heading text-lg font-semibold mb-4">Top performers</h2>
         <div className="divide-y divide-slate-100">
-          {top_performers.map((u, i) => (
-            <div key={u.id} className="flex items-center justify-between py-3" data-testid={`top-perf-${i}`}>
+          {top_performers.map((u) => (
+            <div key={u.id} className="flex items-center justify-between py-3" data-testid={`top-perf-${u.id}`}>
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-mono text-sm">{i+1}</div>
+                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-mono text-sm">{top_performers.indexOf(u)+1}</div>
                 <div>
                   <div className="font-medium text-sm">{u.full_name}</div>
                   <div className="text-xs text-slate-500 font-mono">{u.login_id} · {u.department}</div>

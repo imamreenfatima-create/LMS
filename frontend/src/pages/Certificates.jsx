@@ -90,7 +90,10 @@ export default function Certificates() {
                         try {
                           await navigator.clipboard.writeText(verifyUrl);
                           (await import("sonner")).toast.success("Verify link copied");
-                        } catch {}
+                        } catch (err) {
+                          console.error("Clipboard copy failed:", err);
+                          (await import("sonner")).toast.error("Couldn't copy link — try selecting manually");
+                        }
                       }} data-testid={`copy-verify-${c.id}`}
                          className="inline-flex items-center gap-2 px-3 py-2 border border-slate-300 text-slate-700 text-sm rounded-sm hover:bg-slate-50">
                         <Share2 className="w-3.5 h-3.5" /> Copy link
