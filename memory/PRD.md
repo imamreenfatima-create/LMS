@@ -48,3 +48,14 @@ Enterprise-grade LMS for HR Recruitment Consultancy "Hireginie" to train recruit
 
 ## Test Credentials
 See `/app/memory/test_credentials.md`
+
+## Deployment Safety Protocol
+**Mandatory before every production deploy:**
+1. Run `cd /app/backend && python3 preflight.py` → must exit 0
+2. Hit `GET /api/__healthz__` → must return `{"status":"ok",...}`
+3. Lint backend: `mcp_lint_python` on `server.py` (style warnings OK; undefined names = STOP)
+
+**Safety layers in place:**
+- `preflight.py` — pyflakes static scan + import-test + dependency check + env-var check. Catches `NameError: name 'X' is not defined` at module load (the failure mode that caused the 2026-06-20 production outage).
+- `@app.on_event("startup")` self-check in `server.py` — asserts critical names resolve and pod fails-fast if not.
+- `GET /api/__healthz__` — deep readiness probe (MongoDB ping + storage key check). Use as Kubernetes readiness probe URL.

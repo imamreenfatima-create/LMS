@@ -1166,6 +1166,25 @@ async def ai_recommend(user=Depends(current_user)):
 async def root():
     return {"app": "Hireginie LMS", "status": "ok", "time": now_iso()}
 
+@api_router.get("/__healthz__")
+async def healthz():
+    """Deep health-check — verifies DB + storage + critical imports.
+    Use this for deployment readiness probes."""
+    checks: Dict[str, Any] = {"status": "ok"}
+    try:
+        await db.users.find_one({}, {"_id": 0, "id": 1})
+        checks["mongodb"] = "ok"
+    except Exception as e:
+        checks["mongodb"] = f"fail: {e}"; checks["status"] = "degraded"
+    try:
+        key = init_storage()
+        checks["object_storage"] = "ok" if key else "no_key"
+        if not key: checks["status"] = "degraded"
+    except Exception as e:
+        checks["object_storage"] = f"fail: {e}"; checks["status"] = "degraded"
+    checks["time"] = now_iso()
+    return checks
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -1181,6 +1200,18 @@ logger = logging.getLogger(__name__)
 
 @app.on_event("startup")
 async def startup():
+    # Self-check: critical names that must resolve at import time.
+    # If any of these fail at runtime the pod will crash early and visibly
+    # (instead of taking traffic and 5xx-ing on every request).
+    try:
+        from typing import Optional as _Opt  # noqa
+        assert callable(init_storage)
+        assert hasattr(BaseModel, "model_dump")
+        logger.info("Preflight self-check passed")
+    except Exception as e:
+        logger.error(f"Preflight self-check failed: {e}")
+        raise
+
     # Initialise object storage
     try:
         if init_storage():
