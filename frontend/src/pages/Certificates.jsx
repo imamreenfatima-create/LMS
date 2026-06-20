@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../lib/api";
-import { Award, Hash, Calendar, Download, Sparkles, Eye } from "lucide-react";
+import { Award, Hash, Calendar, Download, Sparkles, Eye, Linkedin, Share2 } from "lucide-react";
 
 export default function Certificates() {
   const [certs, setCerts] = useState([]);
@@ -56,18 +56,48 @@ export default function Certificates() {
                 <div><div className="flex items-center gap-1 text-slate-500"><Calendar className="w-3 h-3" /> Issued</div><div className="font-mono mt-1">{new Date(c.issued_at).toLocaleDateString()}</div></div>
               </div>
               <div className="mt-3 text-[10px] font-mono text-slate-400">Verify code: {c.verify_code}</div>
-              <a href={`${process.env.REACT_APP_BACKEND_URL}/api/learner/certificates/${c.id}/pdf?token=${localStorage.getItem('hg_token')}`}
-                 onClick={async (e) => {
-                   e.preventDefault();
-                   const res = await api.get(`/learner/certificates/${c.id}/pdf`, { responseType: "blob" });
-                   const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
-                   const a = document.createElement('a'); a.href = url; a.download = `${c.certificate_no}.pdf`; a.click();
-                   window.URL.revokeObjectURL(url);
-                 }}
-                 data-testid={`cert-download-${c.id}`}
-                 className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-[#E11D48] text-white text-sm rounded-sm hover:bg-[#BE123C]">
-                <Download className="w-3.5 h-3.5" /> Download PDF
-              </a>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <a href={`${process.env.REACT_APP_BACKEND_URL}/api/learner/certificates/${c.id}/pdf?token=${localStorage.getItem('hg_token')}`}
+                   onClick={async (e) => {
+                     e.preventDefault();
+                     const res = await api.get(`/learner/certificates/${c.id}/pdf`, { responseType: "blob" });
+                     const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/pdf' }));
+                     const a = document.createElement('a'); a.href = url; a.download = `${c.certificate_no}.pdf`; a.click();
+                     window.URL.revokeObjectURL(url);
+                   }}
+                   data-testid={`cert-download-${c.id}`}
+                   className="inline-flex items-center gap-2 px-4 py-2 bg-[#E11D48] text-white text-sm rounded-sm hover:bg-[#BE123C]">
+                  <Download className="w-3.5 h-3.5" /> Download PDF
+                </a>
+                {(() => {
+                  const verifyUrl = `${process.env.REACT_APP_BACKEND_URL}/api/certificates/verify/${c.verify_code}`;
+                  const issueDate = new Date(c.issued_at);
+                  const shareText = `Just earned a certificate in "${c.course_title}" from Hireginie LMS! Cert # ${c.certificate_no}. Verify here:`;
+                  const liShare = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(verifyUrl)}&summary=${encodeURIComponent(shareText)}`;
+                  const liAdd = `https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=${encodeURIComponent(c.course_title)}&organizationName=${encodeURIComponent("Hireginie")}&issueYear=${issueDate.getFullYear()}&issueMonth=${issueDate.getMonth()+1}&certUrl=${encodeURIComponent(verifyUrl)}&certId=${encodeURIComponent(c.certificate_no)}`;
+                  return (
+                    <>
+                      <a href={liShare} target="_blank" rel="noreferrer" data-testid={`linkedin-share-${c.id}`}
+                         className="inline-flex items-center gap-2 px-3 py-2 bg-[#0A66C2] text-white text-sm rounded-sm hover:bg-[#004182]">
+                        <Linkedin className="w-3.5 h-3.5" /> Share on LinkedIn
+                      </a>
+                      <a href={liAdd} target="_blank" rel="noreferrer" data-testid={`linkedin-add-${c.id}`}
+                         className="inline-flex items-center gap-2 px-3 py-2 border border-[#0A66C2] text-[#0A66C2] text-sm rounded-sm hover:bg-[#0A66C2]/5">
+                        <Linkedin className="w-3.5 h-3.5" /> Add to profile
+                      </a>
+                      <button onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(verifyUrl);
+                          (await import("sonner")).toast.success("Verify link copied");
+                        } catch {}
+                      }} data-testid={`copy-verify-${c.id}`}
+                         className="inline-flex items-center gap-2 px-3 py-2 border border-slate-300 text-slate-700 text-sm rounded-sm hover:bg-slate-50">
+                        <Share2 className="w-3.5 h-3.5" /> Copy link
+                      </button>
+                    </>
+                  );
+                })()}
+              </div>
             </div>
           ))}
         </div>
