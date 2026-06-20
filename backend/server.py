@@ -1305,6 +1305,42 @@ async def startup():
         from seed import run_seed
         await run_seed(db)
         logger.info("Seeded initial data.")
+    # Auto migrate Technical Recruitment to the HireGenie v2 curriculum if not present
+    if await db.courses.count_documents({"sub_category": "PYTHON ECOSYSTEM"}) == 0:
+        try:
+            from migrate_tech_curriculum import SECTIONS, nid, now
+            trainer = await db.users.find_one({"role": {"$in": ["admin","trainer"]}}, {"_id": 0, "id": 1})
+            trainer_id = trainer["id"] if trainer else "system"
+            old = await db.courses.find({"category": "Technical Recruitment"}, {"_id": 0, "id": 1}).to_list(500)
+            old_ids = [c["id"] for c in old]
+            if old_ids:
+                old_modules = await db.modules.find({"course_id": {"$in": old_ids}}).to_list(2000)
+                await db.lessons.delete_many({"module_id": {"$in": [m["id"] for m in old_modules]}})
+                await db.modules.delete_many({"course_id": {"$in": old_ids}})
+                await db.quizzes.delete_many({"course_id": {"$in": old_ids}})
+                await db.assignments.delete_many({"course_id": {"$in": old_ids}})
+                await db.courses.delete_many({"id": {"$in": old_ids}})
+            for section_key, info in SECTIONS.items():
+                cid = nid()
+                total_min = sum(l[2] for l in info["lessons"])
+                await db.courses.insert_one({
+                    "id": cid, "title": info["title"],
+                    "description": f"Curated training videos for tech recruiters — {section_key.title()}. {len(info['lessons'])} videos.",
+                    "category": "Technical Recruitment", "sub_category": section_key,
+                    "thumbnail": info["thumb"], "duration_hours": round(total_min/60, 1),
+                    "level": info["level"], "skills": [section_key.lower()], "is_published": True,
+                    "created_by": trainer_id, "created_at": now(),
+                })
+                mid = nid()
+                await db.modules.insert_one({"id": mid, "course_id": cid,
+                    "title": f"{info['title']} — Core Videos", "description": "", "order": 0, "created_at": now()})
+                for i, (t, u, d, ct) in enumerate(info["lessons"]):
+                    await db.lessons.insert_one({"id": nid(), "module_id": mid, "title": t,
+                        "content_type": ct, "content_url": u, "text_content": "",
+                        "duration_min": d, "order": i, "created_at": now()})
+            logger.info(f"HireGenie tech curriculum bootstrapped: {len(SECTIONS)} courses")
+        except Exception as e:
+            logger.error(f"Tech curriculum bootstrap failed: {e}")
 
 @app.on_event("shutdown")
 async def shutdown():
