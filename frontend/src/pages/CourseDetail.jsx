@@ -98,14 +98,14 @@ function ResourceSection({ icon: Icon, label, lessons, completedSet, onOpen, acc
   );
 }
 
-// ---------- Module accordion ----------
+// ---------- Module accordion with tabs ----------
 function ModuleAccordion({ module, idx, defaultOpen, completedSet, moduleQuizzes, passedQuizIds, onOpenLesson }) {
   const [open, setOpen] = useState(defaultOpen);
+  const [tab, setTab] = useState("videos");
   const buckets = useMemo(() => ({
-    videos:  module.lessons.filter(l => l.content_type === "video"),
+    videos:  module.lessons.filter(l => l.content_type === "video" || l.content_type === "youtube" || l.content_type === "link"),
     docs:    module.lessons.filter(l => l.content_type === "pdf" || l.content_type === "doc" || l.content_type === "notes"),
     ppts:    module.lessons.filter(l => l.content_type === "ppt"),
-    youtube: module.lessons.filter(l => l.content_type === "youtube" || l.content_type === "link"),
   }), [module.lessons]);
 
   const total = module.lessons.length;
@@ -113,22 +113,30 @@ function ModuleAccordion({ module, idx, defaultOpen, completedSet, moduleQuizzes
   const lessonsAllDone = total > 0 && doneLessons === total;
   const quizzesAllPassed = moduleQuizzes.length === 0 || moduleQuizzes.every(q => passedQuizIds.has(q.id));
   const moduleComplete = lessonsAllDone && quizzesAllPassed;
-  // Progress = lesson progress weighted with quiz pass
   const denom = total + moduleQuizzes.length;
   const num = doneLessons + moduleQuizzes.filter(q => passedQuizIds.has(q.id)).length;
   const pct = denom ? Math.round((num / denom) * 100) : 0;
+
+  const tabs = [
+    { id: "videos", label: "Videos", icon: Video, count: buckets.videos.length, done: buckets.videos.filter(l=>completedSet.has(l.id)).length },
+    { id: "docs", label: "Documents", icon: FileText, count: buckets.docs.length, done: buckets.docs.filter(l=>completedSet.has(l.id)).length },
+    { id: "ppts", label: "PPTs", icon: Presentation, count: buckets.ppts.length, done: buckets.ppts.filter(l=>completedSet.has(l.id)).length },
+    { id: "asgmt", label: "Assignment", icon: ClipboardCheck, count: moduleQuizzes.length, done: moduleQuizzes.filter(q=>passedQuizIds.has(q.id)).length },
+  ];
+
+  const activeLessons = tab === "videos" ? buckets.videos : tab === "docs" ? buckets.docs : tab === "ppts" ? buckets.ppts : [];
 
   return (
     <div className="hg-card overflow-hidden" data-testid={`module-${module.id}`}>
       <button
         onClick={()=>setOpen(!open)}
         data-testid={`module-toggle-${module.id}`}
-        className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-slate-50 transition"
+        className="w-full flex items-center gap-4 px-5 py-4 text-left hover:bg-rose-50/40 transition"
       >
         {open ? <ChevronDown className="w-5 h-5 text-slate-400 flex-shrink-0" /> : <ChevronRight className="w-5 h-5 text-slate-400 flex-shrink-0" />}
         <div className="flex-1 min-w-0">
           <div className="text-[10px] font-mono uppercase text-slate-500 tracking-widest">Module {idx + 1}</div>
-          <div className="font-heading text-lg font-semibold mt-0.5 truncate">{module.title}</div>
+          <div className="font-heading text-lg font-semibold mt-0.5 truncate text-slate-900">{module.title}</div>
           <div className="flex items-center gap-3 mt-2">
             <div className="flex-1 max-w-xs h-1.5 bg-slate-100 rounded-full overflow-hidden">
               <div className="h-full bg-[#E11D48] transition-all" style={{width: `${pct}%`}} />
@@ -143,43 +151,53 @@ function ModuleAccordion({ module, idx, defaultOpen, completedSet, moduleQuizzes
         )}
       </button>
       {open && (
-        <div className="px-5 pb-5 pt-1 space-y-3 bg-slate-50/30">
-          <ResourceSection icon={Video} label="Video Lessons" lessons={buckets.videos} completedSet={completedSet} onOpen={onOpenLesson} accent="text-[#E11D48]" />
-          <ResourceSection icon={FileText} label="Documents" lessons={buckets.docs} completedSet={completedSet} onOpen={onOpenLesson} accent="text-[#0B1121]" />
-          <ResourceSection icon={Presentation} label="Presentations (PPT)" lessons={buckets.ppts} completedSet={completedSet} onOpen={onOpenLesson} accent="text-[#F59E0B]" />
-          <ResourceSection icon={Youtube} label="YouTube Resources" lessons={buckets.youtube} completedSet={completedSet} onOpen={onOpenLesson} accent="text-[#FF0000]" />
-          {moduleQuizzes.length > 0 && (
-            <div className="border border-slate-200 rounded-lg bg-white">
-              <div className="px-4 py-2.5 border-b border-slate-100 flex items-center gap-2 bg-slate-50/50">
-                <ClipboardCheck className="w-4 h-4 text-[#E11D48]" />
-                <div className="text-sm font-semibold">Assignment</div>
-                <div className="text-xs text-slate-500 font-mono ml-auto">{moduleQuizzes.filter(q => passedQuizIds.has(q.id)).length} / {moduleQuizzes.length} passed</div>
-              </div>
-              <div className="p-3 space-y-2">
-                {moduleQuizzes.map(q => {
-                  const passed = passedQuizIds.has(q.id);
-                  return (
-                    <Link key={q.id} to={`/app/quiz/${q.id}`} data-testid={`assignment-link-${q.id}`} className={`block p-3 rounded border ${passed ? "bg-emerald-50/40 border-emerald-200" : "border-transparent hover:bg-slate-50 hover:border-slate-200"}`}>
-                      <div className="flex items-center gap-2">
-                        {passed ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <FileQuestion className="w-4 h-4 text-[#E11D48]" />}
-                        <div className="flex-1">
-                          <div className="text-sm font-medium">{q.title}</div>
-                          <div className="text-xs text-slate-500 font-mono mt-0.5">{q.questions?.length || 0} MCQs · {q.duration_min} min · pass {q.pass_percent}%{passed ? " · ✓ Passed" : ""}</div>
+        <div className="border-t border-slate-100">
+          <div className="flex border-b border-slate-200 bg-slate-50/40">
+            {tabs.map(t => (
+              <button key={t.id} onClick={()=>setTab(t.id)} data-testid={`tab-${module.id}-${t.id}`}
+                className={`flex-1 px-4 py-3 text-sm font-medium flex items-center justify-center gap-2 border-b-2 transition ${tab === t.id ? "border-[#E11D48] text-[#E11D48] bg-white" : "border-transparent text-slate-600 hover:text-slate-900"}`}>
+                <t.icon className="w-4 h-4" /> {t.label}
+                <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${tab===t.id ? "bg-rose-100 text-[#BE123C]" : "bg-slate-100 text-slate-500"}`}>{t.done}/{t.count}</span>
+              </button>
+            ))}
+          </div>
+          <div className="p-4">
+            {tab === "asgmt" ? (
+              moduleQuizzes.length === 0 ? (
+                <div className="text-center text-sm text-slate-500 py-6">No assignment in this module.</div>
+              ) : (
+                <div className="space-y-2">
+                  {moduleQuizzes.map(q => {
+                    const passed = passedQuizIds.has(q.id);
+                    return (
+                      <Link key={q.id} to={`/app/quiz/${q.id}`} data-testid={`assignment-link-${q.id}`}
+                        className={`block p-3 rounded border ${passed ? "bg-emerald-50/40 border-emerald-200" : "border-slate-200 hover:bg-rose-50/40"}`}>
+                        <div className="flex items-center gap-2">
+                          {passed ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <FileQuestion className="w-4 h-4 text-[#E11D48]" />}
+                          <div className="flex-1">
+                            <div className="text-sm font-medium text-slate-900">{q.title}</div>
+                            <div className="text-xs text-slate-500 font-mono mt-0.5">{q.questions?.length || 0} MCQs · {q.duration_min} min · pass {q.pass_percent}%{passed ? " · ✓ Passed" : ""}</div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-slate-400" />
                         </div>
-                        <ChevronRight className="w-4 h-4 text-slate-400" />
-                      </div>
-                    </Link>
-                  );
-                })}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )
+            ) : activeLessons.length === 0 ? (
+              <div className="text-center text-sm text-slate-500 py-6">No {tab === "videos" ? "videos" : tab === "docs" ? "documents" : "presentations"} in this module yet.</div>
+            ) : (
+              <div className="space-y-1">
+                {activeLessons.map(l => <ResourceRow key={l.id} lesson={l} done={completedSet.has(l.id)} onOpen={onOpenLesson} />)}
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
     </div>
   );
 }
-
 // ---------- Main page ----------
 export default function CourseDetail() {
   const { id } = useParams();

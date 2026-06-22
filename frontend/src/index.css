@@ -7,11 +7,11 @@
 :root {
   --hg-bg: #F8FAFC;
   --hg-surface: #FFFFFF;
-  --hg-sidebar: #0B1121;
-  --hg-sidebar-hover: #1E293B;
+  --hg-sidebar: #FFFFFF;
+  --hg-sidebar-hover: #FEE2E2;
   --hg-text: #0F172A;
   --hg-muted: #64748B;
-  --hg-border: #E2E8F0;
+  --hg-border: #E5E7EB;
   --hg-brand: #E11D48;
   --hg-brand-hover: #BE123C;
   --hg-success: #10B981;
@@ -60,14 +60,22 @@ body {
 .font-heading { font-family: 'Manrope', sans-serif; letter-spacing: -0.02em; }
 .font-mono { font-family: 'IBM Plex Mono', monospace; }
 
-/* Sidebar */
+/* Sidebar — light theme with red accents */
 .hg-sidebar {
   background: var(--hg-sidebar);
-  color: #F8FAFC;
+  color: var(--hg-text);
+  border-right: 1px solid var(--hg-border);
 }
-.hg-sidebar a, .hg-sidebar button { color: #CBD5E1; }
-.hg-sidebar a:hover, .hg-sidebar button:hover { color: #fff; background: var(--hg-sidebar-hover); }
-.hg-sidebar a.active { background: var(--hg-sidebar-hover); color: #fff; border-left: 3px solid var(--hg-brand); }
+.hg-sidebar a, .hg-sidebar button { color: #475569; }
+.hg-sidebar a:hover, .hg-sidebar button:hover { color: var(--hg-brand); background: #FEF2F2; }
+.hg-sidebar a.active { background: #FEF2F2; color: var(--hg-brand); border-left: 3px solid var(--hg-brand); font-weight: 600; }
+
+/* Red top header bar */
+.hg-topbar { background: var(--hg-brand); color: #fff; }
+.hg-topbar input { background: rgba(255,255,255,0.12); color: #fff; border-color: rgba(255,255,255,0.25); }
+.hg-topbar input::placeholder { color: rgba(255,255,255,0.7); }
+.hg-topbar input:focus { background: #fff; color: var(--hg-text); }
+.hg-topbar input:focus::placeholder { color: var(--hg-muted); }
 
 /* Brand button */
 .hg-btn-primary {

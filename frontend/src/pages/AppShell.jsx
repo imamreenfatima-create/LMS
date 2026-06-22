@@ -48,15 +48,15 @@ export default function AppShell() {
     <div className="min-h-screen flex" data-testid="app-shell">
       {/* Sidebar */}
       <aside className="hg-sidebar w-64 flex-shrink-0 flex flex-col">
-        <div className="p-6 border-b border-[#1E293B] flex items-center gap-3">
+        <div className="p-6 border-b border-slate-200 flex items-center gap-3">
           <img src={LOGO_URL} alt="" className="w-9 h-9 rounded-sm" />
           <div>
-            <div className="font-heading text-lg font-bold text-white">Hireginie<span className="text-[#E11D48]">.</span></div>
-            <div className="text-[10px] font-mono uppercase tracking-widest text-[#64748B]">LMS</div>
+            <div className="font-heading text-lg font-bold text-slate-900">HireGenie<span className="text-[#E11D48]">.</span></div>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500">LMS</div>
           </div>
         </div>
         <nav className="flex-1 py-4 overflow-y-auto">
-          <div className="px-4 text-[10px] font-mono uppercase tracking-widest text-[#64748B] mb-2">Learning</div>
+          <div className="px-4 text-[10px] font-mono uppercase tracking-widest text-slate-500 mb-2">Learning</div>
           {learnerNav.map((n) => (
             <NavLink
               data-testid={`nav-${n.label.toLowerCase().replace(/ /g,'-')}`}
@@ -68,7 +68,7 @@ export default function AppShell() {
           ))}
           {isAdmin && (
             <>
-              <div className="px-4 mt-6 text-[10px] font-mono uppercase tracking-widest text-[#64748B] mb-2">Administration</div>
+              <div className="px-4 mt-6 text-[10px] font-mono uppercase tracking-widest text-slate-500 mb-2">Administration</div>
               {adminNav.map((n) => (
                 <NavLink
                   data-testid={`nav-admin-${n.label.toLowerCase()}`}
@@ -81,17 +81,17 @@ export default function AppShell() {
             </>
           )}
         </nav>
-        <div className="p-4 border-t border-[#1E293B]">
+        <div className="p-4 border-t border-slate-200">
           <div className="flex items-center gap-3 px-2 py-2">
             <div className="w-9 h-9 rounded-full bg-[#E11D48] text-white flex items-center justify-center text-sm font-semibold font-heading">
               {user?.full_name?.[0]}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm text-white truncate">{user?.full_name}</div>
-              <div className="text-[10px] font-mono uppercase text-[#94A3B8]">{user?.login_id} · {user?.role}</div>
+              <div className="text-sm text-slate-900 truncate">{user?.full_name}</div>
+              <div className="text-[10px] font-mono uppercase text-slate-500">{user?.login_id} · {user?.role}</div>
             </div>
           </div>
-          <button data-testid="logout-btn" onClick={logout} className="w-full mt-2 flex items-center gap-2 px-3 py-2 text-sm text-[#CBD5E1] hover:bg-[#1E293B] rounded">
+          <button data-testid="logout-btn" onClick={logout} className="w-full mt-2 flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-rose-50 hover:text-[#E11D48] rounded">
             <LogOut className="w-4 h-4" /> Sign out
           </button>
         </div>
@@ -99,24 +99,24 @@ export default function AppShell() {
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center gap-4">
+        <header className="h-16 hg-topbar px-6 flex items-center gap-4 shadow-sm">
           <form onSubmit={onSearch} className="flex-1 max-w-xl relative">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-white/70" />
             <input
               data-testid="global-search-input"
               value={q}
               onChange={(e)=>setQ(e.target.value)}
               placeholder="Search courses, modules, skills…"
-              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-md text-sm bg-slate-50 focus:bg-white focus:outline-none focus:border-[#E11D48]"
+              className="w-full pl-10 pr-4 py-2 rounded-md text-sm border focus:outline-none"
             />
           </form>
           <div className="relative">
-            <button data-testid="notifications-btn" onClick={()=>setShowNotifs(!showNotifs)} className="relative p-2 hover:bg-slate-100 rounded-md">
-              <Bell className="w-5 h-5 text-slate-700" />
-              {unread > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-[#E11D48] rounded-full" />}
+            <button data-testid="notifications-btn" onClick={()=>setShowNotifs(!showNotifs)} className="relative p-2 hover:bg-white/10 rounded-md">
+              <Bell className="w-5 h-5 text-white" />
+              {unread > 0 && <span className="absolute top-1 right-1 w-2 h-2 bg-white rounded-full" />}
             </button>
             {showNotifs && (
-              <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-md shadow-lg z-50 max-h-96 overflow-y-auto">
+              <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-md shadow-lg z-50 max-h-96 overflow-y-auto text-slate-900">
                 <div className="p-3 border-b border-slate-100 font-semibold text-sm">Notifications</div>
                 {notifs.length === 0 ? (
                   <div className="p-6 text-center text-sm text-slate-500">No notifications</div>
@@ -130,8 +130,8 @@ export default function AppShell() {
             )}
           </div>
           <div className="text-right">
-            <div className="text-sm font-semibold">{user?.points || 0} <span className="text-xs text-slate-500 font-mono">pts</span></div>
-            <div className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Your score</div>
+            <div className="text-sm font-semibold text-white">{user?.points || 0} <span className="text-xs text-white/80 font-mono">pts</span></div>
+            <div className="text-[10px] font-mono text-white/80 uppercase tracking-wider">Your score</div>
           </div>
         </header>
         <main className="flex-1 overflow-y-auto p-8 hg-fade" data-testid="main-content">

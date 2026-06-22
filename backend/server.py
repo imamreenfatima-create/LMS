@@ -853,8 +853,8 @@ def render_certificate_pdf(cert: dict) -> bytes:
     page = landscape(A4)
     c = canvas.Canvas(buf, pagesize=page)
     W, H = page
-    NAVY = HexColor("#0B1121"); RED = HexColor("#E11D48")
-    GREY = HexColor("#64748B"); DARK = HexColor("#0F172A")
+    RED = HexColor("#E11D48"); GREY = HexColor("#94A3B8")
+    DARK = HexColor("#1F2937"); LIGHT_GREY = HexColor("#F1F5F9")
 
     # Register signature font (once per process)
     from reportlab.pdfbase import pdfmetrics
@@ -866,58 +866,63 @@ def render_certificate_pdf(cert: dict) -> bytes:
         except Exception:
             sig_font_name = "Helvetica-Oblique"
 
-    # Outer borders
-    c.setStrokeColor(NAVY); c.setLineWidth(2); c.rect(20, 20, W-40, H-40)
-    c.setStrokeColor(RED); c.setLineWidth(0.7); c.rect(35, 35, W-70, H-70)
+    # Soft light-grey decorative corners (no heavy border)
+    c.setFillColor(LIGHT_GREY); c.rect(0, H-12, W, 12, fill=1, stroke=0)
+    c.setFillColor(LIGHT_GREY); c.rect(0, 0, W, 12, fill=1, stroke=0)
+    c.setFillColor(RED); c.rect(0, H-12, W, 4, fill=1, stroke=0)
+    c.setFillColor(RED); c.rect(0, 8, W, 4, fill=1, stroke=0)
 
-    # Top navy bar with logo + brand
-    c.setFillColor(NAVY); c.rect(35, H-100, W-70, 65, fill=1, stroke=0)
+    # Top - logo + brand
     logo_path = ROOT_DIR / "assets" / "logo.png"
     if logo_path.exists():
         try:
-            c.drawImage(ImageReader(str(logo_path)), 55, H-95, 55, 55, mask='auto')
+            c.drawImage(ImageReader(str(logo_path)), 60, H-95, 55, 55, mask='auto')
         except Exception:
             pass
-    c.setFillColor(HexColor("#FFFFFF"))
-    c.setFont("Helvetica-Bold", 22); c.drawString(125, H-72, "Hireginie")
-    c.setFillColor(RED); c.drawString(125 + c.stringWidth("Hireginie","Helvetica-Bold",22), H-72, ".")
-    c.setFillColor(HexColor("#94A3B8"))
-    c.setFont("Helvetica", 8); c.drawString(125, H-88, "ENTERPRISE LMS  ·  RECRUITMENT TRAINING")
+    c.setFillColor(DARK)
+    c.setFont("Helvetica-Bold", 24); c.drawString(130, H-65, "HireGenie")
+    c.setFillColor(RED); c.drawString(130 + c.stringWidth("HireGenie","Helvetica-Bold",24), H-65, ".")
+    c.setFillColor(GREY)
+    c.setFont("Helvetica", 9); c.drawString(130, H-83, "ENTERPRISE LEARNING · RECRUITMENT TRAINING")
 
     # Headline
-    c.setFillColor(GREY); c.setFont("Helvetica", 10)
+    c.setFillColor(RED); c.setFont("Helvetica-Bold", 11)
     c.drawCentredString(W/2, H-150, "CERTIFICATE OF COMPLETION")
-    c.setFillColor(DARK); c.setFont("Helvetica-Bold", 18)
-    c.drawCentredString(W/2, H-200, "This certifies that")
+    c.setStrokeColor(RED); c.setLineWidth(0.6)
+    c.line(W/2-100, H-158, W/2+100, H-158)
+
+    c.setFillColor(DARK); c.setFont("Helvetica", 14)
+    c.drawCentredString(W/2, H-195, "This certificate is proudly presented to")
 
     # Recipient
-    c.setFillColor(RED); c.setFont("Helvetica-Bold", 30)
-    c.drawCentredString(W/2, H-250, cert["user_name"])
-    c.setStrokeColor(HexColor("#E2E8F0")); c.setLineWidth(0.5)
-    c.line(W/2-180, H-260, W/2+180, H-260)
+    c.setFillColor(DARK); c.setFont("Helvetica-Bold", 34)
+    c.drawCentredString(W/2, H-245, cert["user_name"])
+    c.setStrokeColor(HexColor("#E5E7EB")); c.setLineWidth(0.5)
+    c.line(W/2-200, H-258, W/2+200, H-258)
 
-    # Body + course
+    # Congratulations message + course
     c.setFillColor(DARK); c.setFont("Helvetica", 13)
-    c.drawCentredString(W/2, H-290, "has successfully completed the course")
-    c.setFont("Helvetica-Bold", 18); c.setFillColor(NAVY)
+    c.drawCentredString(W/2, H-290, "Congratulations on successfully completing the course")
+    c.setFont("Helvetica-Bold", 20); c.setFillColor(RED)
     c.drawCentredString(W/2, H-322, cert["course_title"])
 
     # Footer - cert no / date (left)
     c.setFillColor(GREY); c.setFont("Helvetica", 8)
-    c.drawString(70, 95, "CERTIFICATE NO."); c.drawString(70, 65, "DATE OF ISSUE")
+    c.drawString(70, 95, "CERTIFICATE ID"); c.drawString(70, 65, "DATE OF ISSUE")
     c.setFillColor(DARK); c.setFont("Helvetica-Bold", 10)
     c.drawString(70, 80, cert["certificate_no"])
     c.drawString(70, 50, cert["issued_at"][:10])
 
-    # Signature block (center) — script font "Raziya"
-    c.setFillColor(DARK); c.setFont(sig_font_name, 28)
-    c.drawCentredString(W/2, 95, "Raziya")
-    c.setStrokeColor(DARK); c.setLineWidth(0.5)
-    c.line(W/2-90, 80, W/2+90, 80)
+    # Signature block (center) — script font "Tabish Khan"
+    c.setFillColor(DARK); c.setFont(sig_font_name, 30)
+    c.drawCentredString(W/2, 95, "Tabish Khan")
+    c.setStrokeColor(HexColor("#E5E7EB")); c.setLineWidth(0.5)
+    c.line(W/2-110, 80, W/2+110, 80)
     c.setFillColor(DARK); c.setFont("Helvetica-Bold", 10)
-    c.drawCentredString(W/2, 65, "Raziya · Chief Learning Officer")
-    c.setFillColor(GREY); c.setFont("Helvetica", 8)
-    c.drawCentredString(W/2, 50, "Hireginie Learning Authority")
+    c.drawCentredString(W/2, 65, "Tabish Khan")
+    c.setFillColor(GREY); c.setFont("Helvetica", 9)
+    c.drawCentredString(W/2, 52, "Head — Learning & Development (L&D)")
+    c.setFont("Helvetica", 7); c.drawCentredString(W/2, 40, "HireGenie Learning Authority")
 
     # QR Code
     qr = qrcode.make(f"https://hireginie.lms/verify/{cert['verify_code']}")
