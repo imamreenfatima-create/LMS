@@ -51,8 +51,8 @@ export default function AppShell() {
         <div className="p-6 border-b border-slate-200 flex items-center gap-3">
           <img src={LOGO_URL} alt="" className="w-9 h-9 rounded-sm" />
           <div>
-            <div className="font-heading text-lg font-bold text-slate-900">HireGenie<span className="text-[#E11D48]">.</span></div>
-            <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500">LMS</div>
+            <div className="font-heading text-lg font-bold text-slate-900 tracking-tight">HIREGINIE</div>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500">Talent Cloud · LMS</div>
           </div>
         </div>
         <nav className="flex-1 py-4 overflow-y-auto">

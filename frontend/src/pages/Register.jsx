@@ -44,7 +44,8 @@ export default function Register() {
         <div className="relative z-10 p-12 flex flex-col justify-between w-full">
           <div className="flex items-center gap-3">
             <img src={LOGO_URL} alt="" className="w-10 h-10 rounded-sm" />
-            <div className="text-white font-heading text-2xl font-bold">Hireginie<span className="text-[#E11D48]">.</span></div>
+            <div className="text-white font-heading text-2xl font-bold tracking-tight">HIREGINIE</div>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-[#94A3B8] -mt-0.5">Talent Cloud</div>
           </div>
           <div className="space-y-6 max-w-md">
             <div className="text-xs font-mono uppercase tracking-[0.2em] text-[#94A3B8]">Join the platform</div>
@@ -65,7 +66,8 @@ export default function Register() {
         <div className="w-full max-w-md hg-fade">
           <div className="lg:hidden flex items-center gap-3 mb-8">
             <img src={LOGO_URL} alt="" className="w-10 h-10" />
-            <div className="font-heading text-2xl font-bold">Hireginie<span className="text-[#E11D48]">.</span></div>
+            <div className="font-heading text-2xl font-bold tracking-tight">HIREGINIE</div>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500 -mt-0.5">Talent Cloud</div>
           </div>
           <div className="mb-6">
             <div className="text-xs font-mono uppercase tracking-[0.2em] text-slate-500 mb-3">Sign up</div>

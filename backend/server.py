@@ -880,10 +880,9 @@ def render_certificate_pdf(cert: dict) -> bytes:
         except Exception:
             pass
     c.setFillColor(DARK)
-    c.setFont("Helvetica-Bold", 24); c.drawString(130, H-65, "HireGenie")
-    c.setFillColor(RED); c.drawString(130 + c.stringWidth("HireGenie","Helvetica-Bold",24), H-65, ".")
+    c.setFont("Helvetica-Bold", 26); c.drawString(130, H-65, "HIREGINIE")
     c.setFillColor(GREY)
-    c.setFont("Helvetica", 9); c.drawString(130, H-83, "ENTERPRISE LEARNING · RECRUITMENT TRAINING")
+    c.setFont("Helvetica", 9); c.drawString(130, H-83, "TALENT CLOUD  ·  RECRUITMENT TRAINING")
 
     # Headline
     c.setFillColor(RED); c.setFont("Helvetica-Bold", 11)
@@ -922,7 +921,7 @@ def render_certificate_pdf(cert: dict) -> bytes:
     c.drawCentredString(W/2, 65, "Tabish Khan")
     c.setFillColor(GREY); c.setFont("Helvetica", 9)
     c.drawCentredString(W/2, 52, "Head — Learning & Development (L&D)")
-    c.setFont("Helvetica", 7); c.drawCentredString(W/2, 40, "HireGenie Learning Authority")
+    c.setFont("Helvetica", 7); c.drawCentredString(W/2, 40, "Hireginie Talent Cloud · Learning Authority")
 
     # QR Code
     qr = qrcode.make(f"https://hireginie.lms/verify/{cert['verify_code']}")
