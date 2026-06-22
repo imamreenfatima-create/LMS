@@ -910,8 +910,6 @@ def render_certificate_pdf(cert: dict) -> bytes:
     c.setFont("Helvetica-Bold", 26); c.drawString(130, H-65, "HIREGINIE")
     c.setFillColor(DARK)
     c.setFont("Helvetica-Bold", 11); c.drawString(130, H-82, "TALENT CLOUD")
-    c.setFillColor(GREY)
-    c.setFont("Helvetica", 8); c.drawString(130, H-95, "LEARNING MANAGEMENT SYSTEM")
 
     # Headline
     c.setFillColor(RED); c.setFont("Helvetica-Bold", 11)
