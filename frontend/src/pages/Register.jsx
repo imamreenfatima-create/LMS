@@ -44,21 +44,24 @@ export default function Register() {
         <div className="relative z-10 p-12 flex flex-col justify-between w-full">
           <div className="flex items-center gap-3">
             <img src={LOGO_URL} alt="" className="w-10 h-10 rounded-sm" />
-            <div className="text-white font-heading text-2xl font-bold tracking-tight">HIREGINIE</div>
-            <div className="text-[10px] font-mono uppercase tracking-widest text-[#94A3B8] -mt-0.5">Talent Cloud</div>
-          </div>
-          <div className="space-y-6 max-w-md">
-            <div className="text-xs font-mono uppercase tracking-[0.2em] text-[#94A3B8]">Join the platform</div>
-            <h1 className="font-heading text-white text-5xl font-bold leading-[1.05]">Create your<br/>learner account<br/>in 30 seconds.</h1>
-            <p className="text-[#CBD5E1] text-base leading-relaxed">
-              Pick your employee code, set a password, and you're in. No approvals needed for the demo workspace.
-            </p>
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-[#1E293B] text-sm">
-              <div><div className="text-[#94A3B8] font-mono uppercase text-[10px] tracking-widest">Learner code</div><div className="text-white font-mono mt-1">1001 – 1500</div></div>
-              <div><div className="text-[#94A3B8] font-mono uppercase text-[10px] tracking-widest">Admin code</div><div className="text-white font-mono mt-1">AD1001 – AD1500</div></div>
+            <div className="leading-tight">
+              <div className="font-heading text-2xl font-bold tracking-tight text-slate-900">HIREGINIE</div>
+              <div className="text-xs font-semibold tracking-wide text-slate-900">Talent Cloud</div>
+              <div className="text-[9px] font-mono uppercase tracking-widest text-slate-500 mt-0.5">Learning Management System</div>
             </div>
           </div>
-          <div className="text-xs text-[#64748B] font-mono">© 2026 Hireginie. All rights reserved.</div>
+          <div className="space-y-6 max-w-md">
+            <div className="text-xs font-mono uppercase tracking-[0.2em] text-slate-500">Join the platform</div>
+            <h1 className="font-heading text-slate-900 text-5xl font-bold leading-[1.05]">Create your<br/>learner account<br/>in 30 seconds.</h1>
+            <p className="text-slate-600 text-base leading-relaxed">
+              Pick your employee code, set a password, and you're in. No approvals needed for the demo workspace.
+            </p>
+            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200 text-sm">
+              <div><div className="text-slate-500 font-mono uppercase text-[10px] tracking-widest">Learner code</div><div className="text-slate-900 font-mono mt-1">1001 – 1500</div></div>
+              <div><div className="text-slate-500 font-mono uppercase text-[10px] tracking-widest">Admin code</div><div className="text-slate-900 font-mono mt-1">AD1001 – AD1500</div></div>
+            </div>
+          </div>
+          <div className="text-xs text-slate-400 font-mono">© 2026 Hireginie. All rights reserved.</div>
         </div>
       </div>
 
@@ -66,8 +69,11 @@ export default function Register() {
         <div className="w-full max-w-md hg-fade">
           <div className="lg:hidden flex items-center gap-3 mb-8">
             <img src={LOGO_URL} alt="" className="w-10 h-10" />
-            <div className="font-heading text-2xl font-bold tracking-tight">HIREGINIE</div>
-            <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500 -mt-0.5">Talent Cloud</div>
+            <div className="leading-tight">
+              <div className="font-heading text-2xl font-bold tracking-tight">HIREGINIE</div>
+              <div className="text-xs font-semibold text-slate-900 tracking-wide">Talent Cloud</div>
+              <div className="text-[9px] font-mono uppercase tracking-widest text-slate-500 mt-0.5">Learning Management System</div>
+            </div>
           </div>
           <div className="mb-6">
             <div className="text-xs font-mono uppercase tracking-[0.2em] text-slate-500 mb-3">Sign up</div>

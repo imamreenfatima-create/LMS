@@ -21,6 +21,8 @@ import AdminUsers from "./pages/AdminUsers";
 import AdminCourses from "./pages/AdminCourses";
 import AdminSubmissions from "./pages/AdminSubmissions";
 import CourseEditor from "./pages/CourseEditor";
+import CalendarPage from "./pages/Calendar";
+import Announcements from "./pages/Announcements";
 
 function Protected({ roles }) {
   const { user, loading } = useAuth();
@@ -58,6 +60,8 @@ export default function App() {
               <Route path="/app/assignments" element={<MyAssignments />} />
               <Route path="/app/certificates" element={<Certificates />} />
               <Route path="/app/leaderboard" element={<Leaderboard />} />
+              <Route path="/app/calendar" element={<CalendarPage />} />
+              <Route path="/app/announcements" element={<Announcements />} />
               <Route path="/app/search" element={<CourseLibrary />} />
             </Route>
           </Route>
@@ -70,6 +74,8 @@ export default function App() {
               <Route path="/admin/course/:id/edit" element={<CourseEditor />} />
               <Route path="/admin/submissions" element={<AdminSubmissions />} />
               <Route path="/admin/leaderboard" element={<Leaderboard />} />
+              <Route path="/admin/calendar" element={<CalendarPage />} />
+              <Route path="/admin/announcements" element={<Announcements />} />
             </Route>
           </Route>
         </Routes>

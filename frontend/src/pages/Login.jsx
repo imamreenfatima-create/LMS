@@ -38,30 +38,33 @@ export default function Login() {
         <div className="relative z-10 p-12 flex flex-col justify-between w-full">
           <div className="flex items-center gap-3">
             <img src={LOGO_URL} alt="Hireginie" className="w-10 h-10 rounded-sm" />
-            <div className="text-white font-heading text-2xl font-bold tracking-tight">HIREGINIE</div>
-            <div className="text-[10px] font-mono uppercase tracking-widest text-[#94A3B8] -mt-0.5">Talent Cloud</div>
+            <div className="leading-tight">
+              <div className="font-heading text-2xl font-bold tracking-tight text-slate-900">HIREGINIE</div>
+              <div className="text-xs font-semibold tracking-wide text-slate-900">Talent Cloud</div>
+              <div className="text-[9px] font-mono uppercase tracking-widest text-slate-500 mt-0.5">Learning Management System</div>
+            </div>
           </div>
           <div className="space-y-6 max-w-md">
-            <div className="text-xs font-mono uppercase tracking-[0.2em] text-[#94A3B8]">Enterprise LMS · Recruitment Training</div>
-            <h1 className="font-heading text-white text-5xl font-bold leading-[1.05]">
+            <div className="text-xs font-mono uppercase tracking-[0.2em] text-slate-500">Enterprise LMS · Recruitment Training</div>
+            <h1 className="font-heading text-slate-900 text-5xl font-bold leading-[1.05]">
               Build the<br/>recruitment<br/>workforce of<br/>tomorrow.
             </h1>
-            <p className="text-[#CBD5E1] text-base leading-relaxed">
+            <p className="text-slate-600 text-base leading-relaxed">
               A purpose-built learning platform for recruiters, TA specialists, and HR teams.
               Six learning domains, AI-powered training, and verifiable certifications.
             </p>
-            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-[#1E293B]">
+            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200">
               <div>
-                <div className="text-3xl font-heading font-bold text-white">17+</div>
-                <div className="text-xs text-[#94A3B8] uppercase tracking-wider mt-1">Curated Courses</div>
+                <div className="text-3xl font-heading font-bold text-slate-900">17+</div>
+                <div className="text-xs text-slate-500 uppercase tracking-wider mt-1">Curated Courses</div>
               </div>
               <div>
-                <div className="text-3xl font-heading font-bold text-white">6</div>
-                <div className="text-xs text-[#94A3B8] uppercase tracking-wider mt-1">Domains</div>
+                <div className="text-3xl font-heading font-bold text-slate-900">6</div>
+                <div className="text-xs text-slate-500 uppercase tracking-wider mt-1">Domains</div>
               </div>
             </div>
           </div>
-          <div className="text-xs text-[#64748B] font-mono">© 2026 Hireginie. All rights reserved.</div>
+          <div className="text-xs text-slate-400 font-mono">© 2026 Hireginie. All rights reserved.</div>
         </div>
       </div>
 
@@ -70,8 +73,11 @@ export default function Login() {
         <div className="w-full max-w-md hg-fade">
           <div className="lg:hidden flex items-center gap-3 mb-8">
             <img src={LOGO_URL} alt="Hireginie" className="w-10 h-10 rounded-sm" />
-            <div className="font-heading text-2xl font-bold tracking-tight">HIREGINIE</div>
-            <div className="text-[10px] font-mono uppercase tracking-widest text-slate-500 -mt-0.5">Talent Cloud</div>
+            <div className="leading-tight">
+              <div className="font-heading text-2xl font-bold tracking-tight">HIREGINIE</div>
+              <div className="text-xs font-semibold text-slate-900 tracking-wide">Talent Cloud</div>
+              <div className="text-[9px] font-mono uppercase tracking-widest text-slate-500 mt-0.5">Learning Management System</div>
+            </div>
           </div>
           <div className="mb-8">
             <div className="text-xs font-mono uppercase tracking-[0.2em] text-slate-500 mb-3">Sign in</div>

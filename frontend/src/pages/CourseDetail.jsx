@@ -4,8 +4,9 @@ import { api } from "../lib/api";
 import { toast } from "sonner";
 import {
   CheckCircle2, Play, FileText, Youtube, BookOpen, ClipboardCheck, FileQuestion,
-  Sparkles, X, Download, Clock, ChevronDown, ChevronRight, Video, Presentation,
+  Sparkles, X, Download, Clock, ChevronDown, ChevronRight, Video, Presentation, Star,
 } from "lucide-react";
+import CourseFeedback from "./CourseFeedback";
 
 function absoluteUrl(url) {
   if (!url) return "";
@@ -203,6 +204,7 @@ export default function CourseDetail() {
   const { id } = useParams();
   const [data, setData] = useState(null);
   const [active, setActive] = useState(null);
+  const [showFeedback, setShowFeedback] = useState(false);
 
   const load = () => api.get(`/courses/${id}`).then(r => setData(r.data));
   useEffect(() => { load(); }, [id]);
@@ -267,8 +269,21 @@ export default function CourseDetail() {
           <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
             <div className="h-full bg-[#E11D48] transition-all" style={{width: `${progress_pct}%`}} />
           </div>
+          {progress_pct >= 50 && (
+            <button
+              data-testid="rate-course-btn"
+              onClick={() => setShowFeedback(true)}
+              className="mt-4 inline-flex items-center gap-1.5 text-xs text-[#E11D48] hover:underline"
+            >
+              <Star className="w-3.5 h-3.5" /> Rate this course
+            </button>
+          )}
         </div>
       </div>
+
+      {showFeedback && (
+        <CourseFeedback courseId={course.id} courseTitle={course.title} onClose={() => setShowFeedback(false)} />
+      )}
 
       {active && (
         <div className="hg-card p-6">

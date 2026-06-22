@@ -309,6 +309,30 @@ class AiQuizGenIn(BaseModel):
 class AiSummarizeIn(BaseModel):
     text: str
 
+class CalendarEventIn(BaseModel):
+    title: str
+    description: str = ""
+    event_type: str = "event"  # event | webinar | training | deadline | meeting
+    start_date: str  # ISO date or datetime
+    end_date: Optional[str] = ""
+    location: str = ""
+    color: str = "#E11D48"
+    audience: str = "all"  # all | learners | admins | department
+    department: Optional[str] = ""
+
+class AnnouncementIn(BaseModel):
+    title: str
+    body: str
+    pinned: bool = False
+    audience: str = "all"  # all | learners | admins | department
+    department: Optional[str] = ""
+    category: str = "general"  # general | recognition | course_launch | maintenance
+
+class FeedbackIn(BaseModel):
+    course_id: str
+    rating: int  # 1-5
+    comment: str = ""
+
 # ---------- ID generation ----------
 async def next_admin_id() -> str:
     last = await db.users.find_one({"login_id": {"$regex": "^AD[0-9]{4}$"}}, sort=[("login_id", -1)])
@@ -522,6 +546,9 @@ async def list_depts(user=Depends(current_user)):
 async def create_course(payload: CourseIn, user=Depends(require_role("admin", "trainer"))):
     doc = {"id": new_id(), **payload.model_dump(), "created_by": user["id"], "created_at": now_iso()}
     await db.courses.insert_one(doc); doc.pop("_id", None)
+    if payload.is_published:
+        await broadcast_notification("learners", "", "New course available",
+                                     f"{payload.title} is now live in the library", "course")
     return doc
 
 @api_router.get("/courses")
@@ -881,8 +908,10 @@ def render_certificate_pdf(cert: dict) -> bytes:
             pass
     c.setFillColor(DARK)
     c.setFont("Helvetica-Bold", 26); c.drawString(130, H-65, "HIREGINIE")
+    c.setFillColor(DARK)
+    c.setFont("Helvetica-Bold", 11); c.drawString(130, H-82, "TALENT CLOUD")
     c.setFillColor(GREY)
-    c.setFont("Helvetica", 9); c.drawString(130, H-83, "TALENT CLOUD  ·  RECRUITMENT TRAINING")
+    c.setFont("Helvetica", 8); c.drawString(130, H-95, "LEARNING MANAGEMENT SYSTEM")
 
     # Headline
     c.setFillColor(RED); c.setFont("Helvetica-Bold", 11)
@@ -1028,6 +1057,181 @@ async def my_notifications(user=Depends(current_user)):
 async def mark_read(notif_id: str, user=Depends(current_user)):
     await db.notifications.update_one({"id": notif_id, "user_id": user["id"]}, {"$set": {"read": True}})
     return {"ok": True}
+
+@api_router.post("/notifications/read-all")
+async def mark_all_read(user=Depends(current_user)):
+    await db.notifications.update_many({"user_id": user["id"], "read": False}, {"$set": {"read": True}})
+    return {"ok": True}
+
+# ---------- Broadcast helper ----------
+async def broadcast_notification(audience: str, department: str, title: str, body: str, kind: str = "info"):
+    """Create a notification for every user matching the audience filter."""
+    q: Dict[str, Any] = {"status": "active"}
+    if audience == "learners":
+        q["role"] = "learner"
+    elif audience == "admins":
+        q["role"] = {"$in": ["admin", "trainer"]}
+    elif audience == "department" and department:
+        q["department"] = department
+    users = await db.users.find(q, {"_id": 0, "id": 1}).to_list(2000)
+    if not users:
+        return 0
+    docs = [{
+        "id": new_id(), "user_id": u["id"], "title": title, "body": body,
+        "kind": kind, "read": False, "ts": now_iso(),
+    } for u in users]
+    await db.notifications.insert_many(docs)
+    return len(docs)
+
+# ---------- Calendar ----------
+@api_router.get("/calendar/events")
+async def list_events(user=Depends(current_user)):
+    """List events visible to the current user (admin events + their own course deadlines)."""
+    role = user.get("role")
+    dept = user.get("department") or ""
+    # Admin-created events
+    q: Dict[str, Any] = {"$or": [{"audience": "all"}]}
+    if role == "learner":
+        q["$or"].append({"audience": "learners"})
+    if role in ("admin", "trainer"):
+        q["$or"].append({"audience": "admins"})
+    if dept:
+        q["$or"].append({"audience": "department", "department": dept})
+    events = await db.calendar_events.find(q, {"_id": 0}).sort("start_date", 1).to_list(500)
+
+    # Plus auto-generated assignment deadlines (read-only)
+    extra = []
+    if role == "learner":
+        # Pending assignments with due_date
+        assigned = await db.user_courses.find({"user_id": user["id"]}, {"_id": 0, "course_id": 1}).to_list(500)
+        course_ids = [a["course_id"] for a in assigned]
+        asg = await db.assignments.find({"course_id": {"$in": course_ids}, "due_date": {"$nin": ["", None]}}, {"_id": 0}).to_list(500)
+        for a in asg:
+            extra.append({
+                "id": f"asg-{a['id']}", "title": f"Assignment Due: {a['title']}",
+                "description": a.get("description", ""), "event_type": "deadline",
+                "start_date": a["due_date"], "end_date": a["due_date"],
+                "color": "#F59E0B", "audience": "learners", "auto": True,
+                "course_id": a.get("course_id"),
+            })
+    return events + extra
+
+@api_router.post("/admin/calendar/events")
+async def create_event(payload: CalendarEventIn, user=Depends(require_role("admin", "trainer"))):
+    doc = {"id": new_id(), **payload.model_dump(), "created_by": user["id"], "created_at": now_iso()}
+    await db.calendar_events.insert_one(doc); doc.pop("_id", None)
+    # Notify the audience
+    await broadcast_notification(
+        payload.audience, payload.department or "",
+        f"New event: {payload.title}",
+        f"{payload.event_type.title()} on {payload.start_date[:10]}",
+        "calendar",
+    )
+    await log_activity(user["id"], "calendar.create", {"event_id": doc["id"]})
+    return doc
+
+@api_router.patch("/admin/calendar/events/{event_id}")
+async def update_event(event_id: str, payload: CalendarEventIn, user=Depends(require_role("admin", "trainer"))):
+    res = await db.calendar_events.update_one({"id": event_id}, {"$set": payload.model_dump()})
+    if not res.matched_count: raise HTTPException(404, "Event not found")
+    return {"ok": True}
+
+@api_router.delete("/admin/calendar/events/{event_id}")
+async def delete_event(event_id: str, user=Depends(require_role("admin", "trainer"))):
+    await db.calendar_events.delete_one({"id": event_id})
+    return {"ok": True}
+
+# ---------- Announcements ----------
+@api_router.get("/announcements")
+async def list_announcements(user=Depends(current_user)):
+    role = user.get("role")
+    dept = user.get("department") or ""
+    or_clauses: List[Dict[str, Any]] = [{"audience": "all"}]
+    if role == "learner":
+        or_clauses.append({"audience": "learners"})
+    if role in ("admin", "trainer"):
+        or_clauses.append({"audience": "admins"})
+    if dept:
+        or_clauses.append({"audience": "department", "department": dept})
+    rows = await db.announcements.find({"$or": or_clauses}, {"_id": 0}).sort([("pinned", -1), ("ts", -1)]).to_list(200)
+    return rows
+
+@api_router.post("/admin/announcements")
+async def create_announcement(payload: AnnouncementIn, user=Depends(require_role("admin", "trainer"))):
+    doc = {"id": new_id(), **payload.model_dump(), "author_id": user["id"],
+           "author_name": user["full_name"], "ts": now_iso()}
+    await db.announcements.insert_one(doc); doc.pop("_id", None)
+    await broadcast_notification(
+        payload.audience, payload.department or "",
+        f"Announcement: {payload.title}",
+        payload.body[:140],
+        "announcement",
+    )
+    await log_activity(user["id"], "announcement.create", {"announcement_id": doc["id"]})
+    return doc
+
+@api_router.patch("/admin/announcements/{ann_id}")
+async def update_announcement(ann_id: str, payload: AnnouncementIn, user=Depends(require_role("admin", "trainer"))):
+    res = await db.announcements.update_one({"id": ann_id}, {"$set": payload.model_dump()})
+    if not res.matched_count: raise HTTPException(404, "Announcement not found")
+    return {"ok": True}
+
+@api_router.delete("/admin/announcements/{ann_id}")
+async def delete_announcement(ann_id: str, user=Depends(require_role("admin", "trainer"))):
+    await db.announcements.delete_one({"id": ann_id})
+    return {"ok": True}
+
+# ---------- Feedback (Course rating) ----------
+@api_router.post("/learner/feedback")
+async def submit_feedback(payload: FeedbackIn, user=Depends(current_user)):
+    if payload.rating < 1 or payload.rating > 5:
+        raise HTTPException(400, "Rating must be 1-5")
+    course = await db.courses.find_one({"id": payload.course_id}, {"_id": 0, "title": 1})
+    if not course: raise HTTPException(404, "Course not found")
+    existing = await db.feedbacks.find_one({"user_id": user["id"], "course_id": payload.course_id})
+    doc = {
+        "user_id": user["id"], "user_name": user["full_name"],
+        "course_id": payload.course_id, "course_title": course["title"],
+        "rating": payload.rating, "comment": payload.comment, "ts": now_iso(),
+    }
+    if existing:
+        await db.feedbacks.update_one({"_id": existing["_id"]}, {"$set": doc})
+        return {"ok": True, "updated": True}
+    doc["id"] = new_id()
+    await db.feedbacks.insert_one(doc)
+    return {"ok": True, "updated": False}
+
+@api_router.get("/learner/feedback/{course_id}")
+async def my_feedback(course_id: str, user=Depends(current_user)):
+    fb = await db.feedbacks.find_one({"user_id": user["id"], "course_id": course_id}, {"_id": 0})
+    return fb or {}
+
+@api_router.get("/courses/{course_id}/rating")
+async def course_rating(course_id: str, user=Depends(current_user)):
+    fbs = await db.feedbacks.find({"course_id": course_id}, {"_id": 0, "rating": 1}).to_list(2000)
+    if not fbs:
+        return {"avg": 0, "count": 0}
+    avg = sum(f["rating"] for f in fbs) / len(fbs)
+    return {"avg": round(avg, 1), "count": len(fbs)}
+
+@api_router.get("/admin/feedback")
+async def admin_feedback(course_id: Optional[str] = None, user=Depends(require_role("admin", "trainer"))):
+    q = {"course_id": course_id} if course_id else {}
+    rows = await db.feedbacks.find(q, {"_id": 0}).sort("ts", -1).to_list(1000)
+    # Aggregate per course
+    agg: Dict[str, Dict[str, Any]] = {}
+    for r in rows:
+        cid = r["course_id"]
+        if cid not in agg:
+            agg[cid] = {"course_id": cid, "course_title": r.get("course_title", ""), "ratings": [], "count": 0}
+        agg[cid]["ratings"].append(r["rating"])
+        agg[cid]["count"] += 1
+    summary = []
+    for cid, v in agg.items():
+        v["avg"] = round(sum(v["ratings"]) / v["count"], 2)
+        v.pop("ratings", None)
+        summary.append(v)
+    return {"feedbacks": rows, "summary": summary}
 
 # ---------- Search ----------
 @api_router.get("/search")
